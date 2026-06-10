@@ -263,6 +263,31 @@
     white-space: pre-wrap; word-break: break-all;
   }
 
+  /* ── Causal, Boundary, Market ── */
+  .output__causal {
+    margin-top: 12px;
+  }
+  .output__causal details {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .output__causal summary {
+    cursor: pointer; padding: 10px 16px;
+    font-size: 0.875rem; font-weight: 700; color: var(--text);
+    background: #fdf9f4; user-select: none;
+    transition: background var(--transition);
+  }
+  .output__causal summary:hover { background: #faf5ed; }
+
+  .output__boundary {
+    margin-top: 8px;
+  }
+
+  .output__market {
+    margin-top: 8px;
+  }
+
   /* ── Toast ── */
   .toast {
     position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
@@ -964,6 +989,332 @@ const STORY_MAP = {
 };
 
 // ═══════════════════════════════════
+// CAUSAL CHAINS: 因果推导链
+// 不是"这两个元素一起出现过"，而是"A如何导致了B"
+// ═══════════════════════════════════
+const CAUSAL_CHAINS = [
+  {
+    id: 'CC1', name: '付出绑定正反馈螺旋',
+    requires: ['F4', 'V2'],
+    steps: [
+      '观众拥有投票权 → 每次投票都是一次「我参与了」的确认',
+      '参与产生付出绑定 →「我投过票的人」比「路人」更能牵动情绪',
+      '情绪投入 → 下周继续投票 → 绑定加深',
+      '循环越久，沉没成本越高 → 观众变成「自己人」而非「观众」'
+    ],
+    boundary: '中国饭圈打投禁令下，F4+V2组合定生死已不可行。需要将投票对象从"谁走"改为"下周干什么"——参与感保留，红线不碰。',
+    china_note: 'V2+V5替代方案：投票定福利/任务/应援色，不定生死。BTS Weverse已跑通此模式。'
+  },
+  {
+    id: 'CC2', name: '真实性自我证明闭环',
+    requires: ['A1', 'A2'],
+    steps: [
+      '沉默摄影机持续记录 → 每一个细节都被保留，没有被选择性剪辑',
+      '因果链让观众自行发现规律 →「他每次迟到后第二天考核都垫底，不是巧合」',
+      '观众不需要被告知"为什么" → 他们是自己发现的',
+      '自我发现比被告知更有说服力 → 信任不是被灌输的，是自己建构的'
+    ],
+    boundary: '如果周期太短（<2周），因果链来不及建立。至少需要3个完整的事件循环（行为→后果→重复验证）。',
+    china_note: '中国观众对"演的"极度敏感。A1+A2是2026年环境下最强的反AI武器——AI能造假画面，但造不了3个月连续的因果链。'
+  },
+  {
+    id: 'CC3', name: '成长全周期可见',
+    requires: ['E1', 'T3'],
+    steps: [
+      '实时记录不间断 → 成长不是"结果告知"而是"过程见证"',
+      '从笨拙到熟练的每一帧都在 → 观众不是看到了进步，是经历了进步',
+      '失败（A3加持）让成功更真实 →「正因为看过他摔跤，才知道这次站稳不是演的」',
+      '终局时刻的情感爆发 = 整段旅程的累积释放 → 不是感动，是陪一个人走完了全程'
+    ],
+    boundary: '需要至少3个月的拍摄周期。T4跳跃型会直接破坏此链——"跳过过程=跳过成长"。',
+    china_note: '种地吧验证了中国观众对"真实成长"的饥渴。不是选秀式的"从素人到明星"，而是"从不会到会"——后者更接近普通人的生活经验。'
+  },
+  {
+    id: 'CC4', name: '封闭空间人际加速器',
+    requires: ['S1', 'C3'],
+    steps: [
+      '封闭空间剥夺逃避选项 → 冲突发生后无法"换个地方冷静"',
+      '对照者对同一问题的不同立场 → 自然产生争论，不需要剧本',
+      '每个争论都是"这个人的价值观vs那个人的价值观"→ 观众自动站队',
+      '站队=情感绑定 → 观众不是在"看"冲突，是在"参与"价值观辩论'
+    ],
+    boundary: '需要至少2-3组对照者覆盖不同维度。如果只有1组对照+其他人都一致→对照者变成"那个刺头"。',
+    china_note: '中国观众对照者的接受度取决于"吵的是什么"。吵专业问题是加分（"你们都对音乐认真"），吵人品问题是减分（"这人是不是有问题"）。'
+  },
+  {
+    id: 'CC5', name: '悬念仪式化成瘾',
+    requires: ['E3', 'T2'],
+    steps: [
+      '周期性固定节点 → 观众身体形成"到点就看"的节律',
+      '悬念让每次揭晓前充满预测冲动 → 观众在脑子里预演各种结果',
+      '预测落空或命中 → 产生讨论冲动 → 社交媒体扩散',
+      '社交讨论产生FOMO → 没看的人被卷入 → 观看基数扩大'
+    ],
+    boundary: '悬念需要"可预测空间"——如果规则不透明或随机性过强，观众放弃预测→悬念失效。每次揭晓前至少给24小时预测窗口。',
+    china_note: '微博热搜的天然适配——每周淘汰日=热搜预定。但需注意：淘汰结果上热搜可能引发"剧透反感"，需做延迟发布策略。'
+  },
+  {
+    id: 'CC6', name: '幽默+随机，笑料永动',
+    requires: ['E8', 'F8'],
+    steps: [
+      '随机淘汰/分配 → 没人能抱怨"不公平"，因为规则对所有人都一样',
+      '不可预测的结果 → 笑点不是"演"出来的，是"撞"出来的',
+      '幽默引擎让意外变成笑料而非灾难 → "就差一格！"变成笑点而非争议',
+      '放松的观看心态 → 观众不需要紧张谁赢谁输，只需要期待"这次谁又搞笑了"'
+    ],
+    boundary: '需要至少1个"敢出丑"的人。如果所有人都很在意形象，随机结果只会制造尴尬而非笑料。',
+    china_note: '韩国综艺验证了此公式（新西游记的选房游戏），中国市场同样适用。但需注意中国观众对"故意整蛊"的敏感度更高——随机结果必须真的随机，不能让人感觉被针对。'
+  },
+  {
+    id: 'CC7', name: '对抗×直播 = 真紧张',
+    requires: ['E2', 'T6'],
+    steps: [
+      '直播不可编辑 → 胜负在实时发生，没人能预知',
+      '对抗框架让每次交锋都有后果 → "输了就是输了，没有重来"',
+      '观众与选手活在同一个时间轴上 → 同步紧张、同步欢呼',
+      '错过一秒=永远错过 → 不敢关、不敢走，粘性天花板'
+    ],
+    boundary: '直播的技术门槛高（多机位、导播、网络稳定性）。翻车不是事故，但连续翻车会让观众质疑专业性。直播+对抗的容错率极低——一个技术失误可能毁掉一场关键对决。',
+    china_note: '适合电竞综艺、街舞battle等"直播不损害观赏性"的类型。不适合需要精剪的叙事型内容（成长、关系）。'
+  },
+  {
+    id: 'CC8', name: '治愈×陪伴 = 情感避风港',
+    requires: ['E7', 'V7'],
+    steps: [
+      '治愈引擎不靠冲突驱动 → 观众打开不是为了"看谁赢了"',
+      '陪伴型观看不需要全神贯注 → "开着就好，有人在旁边"',
+      '信息轰炸的时代，每周一小时的安静=稀缺资源 → 不是因为好看才看，是因为需要它',
+      '陪伴形成习惯 → 每周固定时间打开 → 不是为了内容，是为了"有人在"的感觉'
+    ],
+    boundary: '需要人物本身有意思——"慢"不等于"无聊"。如果人物无趣，慢时间=灾难。适合搭配T8慢时间+T3实时记录。',
+    china_note: '《向往的生活》验证了中国市场对陪伴型内容的需求。但新一代观众对"假慢生活"（有剧本的农家乐）已经脱敏——必须是真的慢、真的人、真的没事发生。'
+  },
+  {
+    id: 'CC9', name: '游戏×系统淘汰 = 策略竞技',
+    requires: ['E9', 'F6'],
+    steps: [
+      '游戏引擎让观众享受"看聪明人玩规则" → 比的不是力气是脑子',
+      '系统淘汰规则对所有人平等 → 赢家赢得理直气壮，输家输得无话可说',
+      '策略的多样性 → 观众可以代入不同策略派系 → "如果是我，我会选保守"',
+      '每次策略反转都是一次智力满足 → "原来还能这么玩！"'
+    ],
+    boundary: '规则必须足够透明，让观众能跟着算。如果规则复杂到观众看不懂→策略的乐趣消失→变成"看不懂但好像很厉害"。',
+    china_note: 'Running Man的中国版跑男验证了此公式在中国的可行性。但注意中国观众对"钻空子"的道德评判比韩国观众更严格——策略需保持在"聪明"而非"狡猾"的区间。'
+  },
+  {
+    id: 'CC10', name: '偶像养成长期绑定',
+    requires: ['E1', 'O7'],
+    steps: [
+      '成长引擎让观众见证"从不会到会" → 情感绑定建立在"我陪你走过"之上',
+      '持续孵化没有出道日 → 没有"出道即巅峰"的断崖 → 故事一直在进行',
+      '每个阶段有新可能 → 观众不需要在某个夜晚说再见 → "最好的还没来"',
+      '绑定时间越长，沉没成本越高 → 粉丝不是"喜欢"这个偶像，是"参与了"这个偶像的整个人生'
+    ],
+    boundary: '需要持续产内容和持续投运营。这是"没有大结局的连续剧"——对制作方的耐力是终极考验。如果内容产出跟不上，养成空窗期会让绑定松动。',
+    china_note: 'TF家族的模式验证了中国市场对长期养成的接受度。但注意中国偶像产业的政策波动——养成模式需要避开"未成年偶像"的红线。'
+  },
+  {
+    id: 'CC11', name: '镜像者×专家评审 = 分叉点的官方注解',
+    requires: ['C5', 'F1'],
+    steps: [
+      '镜像者起点相同但走向不同 → 观众自己就会比较，疯狂回放找分叉点',
+      '专家评审为每次分叉提供专业解读 → "这一刻他选了保守，那一刻他选了冒险"',
+      '观众的猜测 + 专家的确认 → 双重满足：我猜对了+专家也这么说',
+      '分叉点的每一次确认都加深观众对"选择"的思考 → 不只是在看节目，是在反思人生'
+    ],
+    boundary: '专家必须给出具体的、可验证的点评。如果专家说"我感觉不对"→观众不买账。必须说"你第二段副歌气息断了三次"→观众会点头。',
+    china_note: '中国选秀观众对"导师点评"的需求很高——不只是给分，是给成长方向的指引。PRODUCE 101的导师线之所以动人，是因为点评本身有教学价值。'
+  },
+  {
+    id: 'CC12', name: '守护者×自选退出 = 催泪双杀',
+    requires: ['C6', 'F5'],
+    steps: [
+      '守护关系建立了情感锚 → 观众为了一对守护与被守护的关系追完整季',
+      '自选退出让"留下"变成有分量的选择 → 能走但选择留下 = 真心',
+      '守护者退出 → 被守护者失去盾 → "他为了保我放弃了自己"',
+      '被守护者退出 → 守护者自责 → "我没护好" → 两个方向都是顶级催泪弹'
+    ],
+    boundary: 'F5自选退出不能频繁触发——如果每期都有人走，退出的叙事重量会迅速贬值。建议整季不超过3次退出，且每次退出必须有完整的因果铺垫。',
+    china_note: '中国观众对"主动放弃"的情感反应强烈——需要确保退出不是因为"节目太苦"或"待遇不公"，否则舆论会转向批评节目组。'
+  },
+  {
+    id: 'CC13', name: '颠覆者×幽默 = 规则边缘的笑声',
+    requires: ['C8', 'E8'],
+    steps: [
+      '颠覆者在规则边缘跳舞 → 系统被测试弹性',
+      '幽默引擎把"犯规"变成"搞笑" → 观众不生气，反而期待下一次踩线',
+      '规则守护者（必要的平衡）的无奈反应 → 对比产生喜剧',
+      '"他会不会被罚"的悬念 + "果然被罚了"的笑点 → 笑料稳定产出'
+    ],
+    boundary: '必须有至少1个"规则守护者"来平衡。如果所有人都变颠覆者→系统崩了不好看。颠覆者:守护者 ≈ 1:1 或 1:2。',
+    china_note: '李光洙在Running Man的角色是此公式的黄金标准。中国跑男的陈赫承担了类似功能。关键在于颠覆不是"捣乱"——观众能分清"聪明的犯规"和"不尊重规则"。'
+  },
+  {
+    id: 'CC14', name: '自然节律×倒计时 = 土地的紧迫感',
+    requires: ['T9', 'T1'],
+    steps: [
+      '自然节律不由制作组控制 → 麦子熟了就得收，下雨了就停工',
+      '倒计时来自自然而非人工 → 紧迫感是真实的，不是"节目组说要加速"',
+      '作物不等人 → 每一分钟的拖延都有真实的代价',
+      '"没法跟土地讨价还价" → 观众看到作物真的死了 → 丰收时没人说"演的"'
+    ],
+    boundary: '需要真实的农业生产环节。如果只是"在农田里做任务"而非真实种地→T9的魔法瞬间失效。成本高（长周期+户外拍摄+不可控天气）。',
+    china_note: '种地吧验证了T9+T1在中国的可行性。但注意：农业周期决定了播出节奏——错过播种=等下一年，这不是制作组能控制的。'
+  },
+  {
+    id: 'CC15', name: '瑕疵保留×幽默 = 穿帮即笑料',
+    requires: ['A7', 'E8'],
+    steps: [
+      '瑕疵保留让观众确认"这不是安排好的"→ 信任加分',
+      '幽默引擎把瑕疵变成笑点 → 摄影机晃了？成员吐槽"你行不行"→ 比安排好的段子更好笑',
+      '非设计的意外 = 最好的喜剧 → "这一看就不是剧本"本身就是最好的质量背书'
+    ],
+    boundary: '瑕疵保留的度需要控制。5-10%的瑕疵窗口是最佳区间——太少则假，太多则显得不专业。',
+    china_note: '韩国综艺用此手法已非常成熟。中国综艺较少用——这本身就是差异化机会。在中国"太精致反而不真实"的观众情绪下，A7是低成本高回报的信任投资。'
+  }
+];
+
+// ═══════════════════════════════════
+// BOUNDARY CONDITIONS: 失效条件库
+// 不是泛泛说"可能不好看"，而是具体到"在什么条件下、为什么、怎么修"
+// ═══════════════════════════════════
+const BOUNDARY_CONDITIONS = [
+  {
+    id: 'BC1', name: '投票疲劳',
+    requires: ['F4', 'V2'],
+    condition: '周期 > 8周且每期都有投票环节',
+    symptom: '中段投票率下降30-50%。观众从"我每周都要投"变成"投不投都一样"。核心粉丝仍会投票但路人流失。',
+    fix: '加入"条件复活"机制打断疲劳（F5的变体：被淘汰者可被投票复活一次），或缩短投票周期、减少投票频次。'
+  },
+  {
+    id: 'BC2', name: '封闭窒室',
+    requires: ['S1'],
+    condition: '封闭周期 > 3周且无退出机制且无心理支持',
+    symptom: '参与者出现心理问题（焦虑、抑郁、人际冲突升级为真实伤害）。舆论从"好看"变成"残忍"——参考早期真人秀的伦理争议。',
+    fix: '必须配F5自选退出机制作为安全阀。S1+S2混合（70%关着+30%放出去）。配备专业心理支持团队。'
+  },
+  {
+    id: 'BC3', name: '成长不可见',
+    requires: ['E1', 'T4'],
+    condition: '成长引擎主导 + 跳跃型时间结构',
+    symptom: '"他们说他进步了，但我没看到"——观众被告诉而非被展示。成长最核心的"差一点就做到了"瞬间被跳过→情感投资失去根基。',
+    fix: 'E1必须配T3实时记录。如果必须保留T4→引擎改用E5实验或E6揭秘——这两者不依赖连续时间。'
+  },
+  {
+    id: 'BC4', name: '广告信任崩塌',
+    requires: ['A1', 'A2'],
+    condition: '强真实性叙事（A1+A2+A3等多重锚点）+ 生硬广告植入',
+    symptom: '一期生硬的口播或植入，让观众瞬间从"这是真的"切换到"这是在卖东西"——前期积累的全部信任归零。种地吧的广告争议即此。',
+    fix: '品牌合作必须用场景自然融入（工具/设备赞助不口播、产品作为生活道具出现）。如果做不到→不要承诺A1级别的真实性。'
+  },
+  {
+    id: 'BC5', name: '中国市场政策红线',
+    requires: ['F4', 'V2'],
+    condition: '观众投票决定淘汰 + 打投/氪金机制',
+    symptom: '触碰饭圈乱象整治红线。青春有你3倒奶事件后，打投类选秀在中国已被禁。',
+    fix: '投票对象从"定生死"改为"定方向"：V5社群共创（投下周任务/福利/应援色/粉丝名）。保留参与感，避开红线。'
+  },
+  {
+    id: 'BC6', name: '关系功利化',
+    requires: ['F3', 'E4'],
+    condition: '成员互评淘汰 + 关系驱动',
+    symptom: '"他对我好是因为感情还是不想被淘汰？"——关系引擎最核心的"真情实感"被互评污染。观众开始怀疑每一段关系都是策略性的。',
+    fix: 'F3配E2对抗引擎——对抗框架下互评是"战术"而非"背叛"。或F3配匿名投票+不公布谁投了谁，减轻人际关系毒性。'
+  },
+  {
+    id: 'BC7', name: '悬念过载',
+    requires: ['E3', 'T1'],
+    condition: '悬念引擎 + 倒计时 + 多线并行（>2条悬念线）',
+    symptom: '观众焦虑而非期待。"到底先关心哪个？"——多悬念叠加让观众放弃跟进。从"我每个悬念都想知道答案"变成"算了等结局吧"。',
+    fix: '一次只维持1条主悬念线。次要悬念必须在主悬念揭晓后开启。T1倒计时终点=悬念解答时间点。'
+  },
+  {
+    id: 'BC8', name: '碎片叙事断裂',
+    requires: ['T7'],
+    condition: '碎片化时间结构 + 长线叙事引擎（E1成长/E4关系）',
+    symptom: '成长和关系需要连续的时间感知。"随便从哪集开始"意味着观众看不到"从A到B"的弧线——只见节点，不见过程。',
+    fix: 'T7适合配E8幽默/E6揭秘/E5实验。如果必须长线→每个碎片结尾埋钩子（开放问题），下一段开头回答，制造跨碎片的连续性。'
+  },
+  {
+    id: 'BC9', name: '出口动机错配',
+    requires: ['O5'],
+    condition: '开放结局 + 对抗引擎（E2）或成长引擎（E1）',
+    symptom: '对抗需要胜负结算，成长需要"变成什么"的终点。开放结局=没有终点→观众投资无收束。"追了三个月你告诉我没结果？"',
+    fix: 'O5只能配E4关系/E5实验/E6揭秘/E8幽默。E1和E2必须有闭环出口（O1/O2/O3中的闭合型）。'
+  },
+  {
+    id: 'BC10', name: '密度稀释',
+    requires: ['C1', 'C2', 'C3'],
+    condition: '人物关系类型 ≥ 4 种 + 人物数量 > 20',
+    symptom: '每种关系都浅尝辄止。观众说"人太多了记不住"。剪辑压力爆炸——每期要塞进所有关系线的进展。',
+    fix: '人物总数 ≤ 15。关系类型 ≤ 3。采用分层叙事：前期广度覆盖→中期聚焦8-10人的深度关系。'
+  },
+  {
+    id: 'BC11', name: '时空自悖',
+    requires: ['T3', 'S3'],
+    condition: '实时记录 + 开放世界（不停移动）',
+    symptom: '一直在移动→无法建立稳定的日常→实时记录失去了"日常感"。观众看不到重复场景中的微妙变化——而这是实时记录最值钱的部分。',
+    fix: 'T3+S2半开放是最佳折中：有基地（稳定日常）+ 可外出（新鲜刺激）。纯S3用T4跳跃型反而更自洽。'
+  }
+];
+
+// ═══════════════════════════════════
+// MARKET NOTES: 中国市场适配注解
+// ═══════════════════════════════════
+const MARKET_NOTES = [
+  {
+    id: 'MN1', category: '政策',
+    requires: ['F4', 'V2'],
+    note: '⚠️ 饭圈打投红线。2026年环境：观众投票不能决定淘汰。替代：V5社群共创（投福利/任务/应援色）、V3弹幕互动、V4付费解锁非竞技内容。'
+  },
+  {
+    id: 'MN2', category: '价值观',
+    requires: [],
+    note: '中国广电对综艺有"正能量"要求。方案中须至少包含一个"向上"元素：E1成长（奋斗精神）、E7治愈（人文关怀）、A3失败+站起来（韧性）。纯E8幽默/E9游戏而无正能量元素→审查风险。'
+  },
+  {
+    id: 'MN3', category: '受众',
+    requires: ['V7'],
+    note: '陪伴型观看在中国Z世代中需求旺盛。"开着不看也行"的契约适合B站/抖音的"背景音"场景。V7+E7（治愈）=中国慢综艺已验证的黄金公式。'
+  },
+  {
+    id: 'MN4', category: '受众',
+    requires: ['V8'],
+    note: '二创授权是中国粉丝经济的核心引擎。B站的鬼畜、小红书的分析贴、微博的CP超话——官方给素材+默许二创=免费的二次传播。K-pop已验证此模式，中国尚未被充分利用。'
+  },
+  {
+    id: 'MN5', category: '平台',
+    requires: ['T7'],
+    note: '碎片化时间结构 → 抖音/B站的天然选择。但需注意：T7与长线叙事引擎（E1/E4）矛盾。抖音综艺适合E8幽默、E6揭秘（每段独立成篇+结尾钩子）。'
+  },
+  {
+    id: 'MN6', category: '平台',
+    requires: ['T6'],
+    note: '直播在B站和抖音生态最成熟。爱奇艺/腾讯视频以点播为主→纯直播综艺在长视频平台面临排播困难。T6+S5纯数字空间→团播/虚拟偶像的天然赛道。'
+  },
+  {
+    id: 'MN7', category: '平台',
+    requires: ['E1', 'T3'],
+    note: '成长+实时记录=长视频平台的会员拉新利器（沉浸式追更→连续订阅）。短视频平台做不了这个——成长需要时长。'
+  },
+  {
+    id: 'MN8', category: '成本',
+    requires: ['S3', 'T3'],
+    note: '开放世界+实时记录=制作成本黑洞。户外多机位+长周期+不可控天气→预算至少是棚内综艺的2-3倍。种地吧的农业周期成本即为此类。'
+  },
+  {
+    id: 'MN9', category: '成本',
+    requires: ['S1', 'T2'],
+    note: '封闭空间+周期性=制作成本最可控的组合。棚内录制+固定节奏+后期剪辑→工业化生产。适合预算有限的初创团队。'
+  },
+  {
+    id: 'MN10', category: '趋势',
+    requires: ['A6', 'A7', 'A10'],
+    note: '2026年AI内容爆发→观众对"假"的敏感度达到历史峰值。身体证据(A6)+瑕疵保留(A7)+素朴表演(A10)是反AI武器——AI能造画面，造不了真实的身体反应和意外穿帮。这三者同时选→最强的"这是真的"信号。'
+  }
+];
+
+// ═══════════════════════════════════
 // PRESETS
 // ═══════════════════════════════════
 const PRESETS = {
@@ -1492,13 +1843,26 @@ function generate() {
   html += '<h3>📖 方案简介</h3>';
   html += `<div class="output__pitch">${generatePitch()}</div>`;
 
-  // ── Viewer Journey ──
-  html += '<h3>👀 观众旅程</h3>';
-  html += `<div class="output__journey">${generateViewerJourney()}</div>`;
+  // ── Viewer Journey (collapsed by default) ──
+  html += '<details style="margin-bottom:16px;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden">';
+  html += '<summary style="cursor:pointer;padding:10px 16px;font-size:0.8125rem;font-weight:700;color:var(--text-muted);background:#fdf9f4;user-select:none;letter-spacing:0.02em;text-transform:uppercase">👀 观众旅程 ▸</summary>';
+  html += `<div style="padding:12px 16px">${generateViewerJourney()}</div></details>`;
 
   // ── Highlights ──
   html += '<h3>💡 核心看点</h3>';
   html += `<div class="output__highlights">${generateHighlights()}</div>`;
+
+  // ── Causal Chains: 因果推导 ──
+  html += '<h3>🧠 因果推导链</h3>';
+  html += `<div class="output__causal">${generateCausalAnalysis()}</div>`;
+
+  // ── Boundary Conditions: 失效条件 ──
+  html += '<h3>⚠️ 边界条件 & 失效分析</h3>';
+  html += `<div class="output__boundary">${generateBoundaryConditions()}</div>`;
+
+  // ── Market Notes: 中国市场适配 ──
+  html += '<h3>🌏 中国市场适配</h3>';
+  html += `<div class="output__market">${generateMarketNotes()}</div>`;
 
   // ── Formula ──
   html += '<h3>🧬 组合公式</h3>';
@@ -1690,6 +2054,137 @@ function generateHighlights() {
 }
 
 // ═══════════════════════════════════
+// CAUSAL ANALYSIS: 因果推导链生成
+// ═══════════════════════════════════
+function getSelectedIds() {
+  const ids = new Set();
+  state.narrative.dominant.forEach(id => ids.add(id));
+  state.narrative.auxiliary.forEach(id => ids.add(id));
+  ['time','space','filter','characters','viewing','exit','authenticity'].forEach(k => state[k].forEach(id => ids.add(id)));
+  return ids;
+}
+
+// 将文本中的元素代号（F4/V2/E1等）替换为中文全称
+function replaceIdsWithNames(text) {
+  if (!text) return text;
+  let result = text;
+  // Sort by ID length descending so E10 replaces before E1
+  const sortedIds = Object.keys(elementMap).sort((a, b) => b.length - a.length);
+  sortedIds.forEach(id => {
+    const el = elementMap[id];
+    if (el) {
+      // Match whole word IDs only (bounded by non-word chars or string edges)
+      const regex = new RegExp('\\b' + id + '\\b', 'g');
+      result = result.replace(regex, el.label);
+    }
+  });
+  return result;
+}
+
+function generateCausalAnalysis() {
+  const ids = getSelectedIds();
+  if (ids.size === 0) return '<div style="color:var(--text-muted);padding:12px;font-size:0.9375rem">选择元素后，系统将自动推导因果链。</div>';
+
+  const matches = CAUSAL_CHAINS.filter(chain =>
+    chain.requires.every(id => ids.has(id))
+  );
+
+  if (matches.length === 0) {
+    return '<div style="color:var(--text-muted);padding:12px;font-size:0.9375rem;line-height:1.7">当前元素组合未命中预定义的因果链。<br>这可能意味着：① 这是一个尚未被分析的新组合（值得探索）；② 元素间的关联较弱（建议通过 AI 脑暴验证）。</div>';
+  }
+
+  const picked = matches.slice(0, 4); // max 4 chains to avoid overload
+  return picked.map((chain, i) => {
+    const stepsHtml = chain.steps.map((s, j) =>
+      '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">' +
+      '<span style="color:var(--accent);font-weight:700;flex-shrink:0;font-size:0.75rem;margin-top:2px">' + (j+1) + '→</span>' +
+      '<span style="color:var(--text);font-size:0.875rem;line-height:1.6">' + s + '</span></div>'
+    ).join('');
+
+    let boundaryHtml = '';
+    if (chain.boundary) {
+      boundaryHtml = '<div style="margin-top:10px;padding:8px 12px;background:#fdf2f0;border-radius:6px;border-left:3px solid #f87171">' +
+        '<span style="color:#f87171;font-weight:600;font-size:0.75rem">⚠️ 边界条件</span><br>' +
+        '<span style="color:var(--text);font-size:0.8125rem;line-height:1.6">' + replaceIdsWithNames(chain.boundary) + '</span></div>';
+    }
+
+    let chinaHtml = '';
+    if (chain.china_note) {
+      chinaHtml = '<div style="margin-top:6px;padding:8px 12px;background:#f0f4f8;border-radius:6px;border-left:3px solid var(--accent)">' +
+        '<span style="color:var(--accent);font-weight:600;font-size:0.75rem">🇨🇳 中国市场</span><br>' +
+        '<span style="color:var(--text);font-size:0.8125rem;line-height:1.6">' + replaceIdsWithNames(chain.china_note) + '</span></div>';
+    }
+
+    return '<details style="margin-bottom:10px;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden" ' + (i === 0 ? 'open' : '') + '>' +
+      '<summary style="cursor:pointer;padding:10px 16px;font-size:0.875rem;font-weight:700;color:var(--text);background:#fdf9f4;user-select:none;display:flex;align-items:center;gap:8px">' +
+      '<span style="color:var(--accent)">🧬</span>' + chain.name +
+      '</summary>' +
+      '<div style="padding:14px 16px">' + stepsHtml + boundaryHtml + chinaHtml + '</div></details>';
+  }).join('');
+}
+
+// ═══════════════════════════════════
+// BOUNDARY CONDITIONS: 失效条件检测
+// ═══════════════════════════════════
+function generateBoundaryConditions() {
+  const ids = getSelectedIds();
+  if (ids.size === 0) return '';
+
+  const matches = BOUNDARY_CONDITIONS.filter(bc =>
+    bc.requires.every(id => ids.has(id))
+  );
+
+  if (matches.length === 0) {
+    return '<div style="color:var(--text-muted);padding:12px;font-size:0.9375rem">✅ 未检测到已知失效条件。当前组合在已知边界内运行。</div>';
+  }
+
+  return matches.slice(0, 5).map(bc =>
+    '<div style="padding:12px 14px;margin-bottom:8px;background:#fdf9f4;border-radius:var(--radius-sm);border-left:3px solid var(--dominant)">' +
+    '<div style="margin-bottom:6px">' +
+    '<span style="font-weight:700;color:var(--text);font-size:0.9375rem">' + bc.name + '</span>' +
+    '</div>' +
+    '<div style="font-size:0.8125rem;color:var(--text-muted);margin-bottom:6px;line-height:1.6">' +
+    '<strong>触发：</strong>' + replaceIdsWithNames(bc.condition) + '</div>' +
+    '<div style="font-size:0.8125rem;color:var(--text);margin-bottom:6px;line-height:1.6">' +
+    '<strong>症状：</strong>' + replaceIdsWithNames(bc.symptom) + '</div>' +
+    '<div style="font-size:0.8125rem;color:var(--selected);line-height:1.6">' +
+    '<strong>💡 修复：</strong>' + replaceIdsWithNames(bc.fix) + '</div>' +
+    '</div>'
+  ).join('');
+}
+
+// ═══════════════════════════════════
+// MARKET NOTES: 中国市场适配
+// ═══════════════════════════════════
+function generateMarketNotes() {
+  const ids = getSelectedIds();
+  if (ids.size === 0) return '';
+
+  const matches = MARKET_NOTES.filter(mn =>
+    mn.requires.length === 0 || mn.requires.every(id => ids.has(id))
+  );
+
+  if (matches.length === 0) return '';
+
+  const categories = {};
+  matches.forEach(m => {
+    if (!categories[m.category]) categories[m.category] = [];
+    categories[m.category].push(m.note);
+  });
+
+  const catLabels = { '政策': '🚨 政策红线', '价值观': '🧭 价值导向', '受众': '👥 受众洞察', '平台': '📱 平台匹配', '成本': '💰 成本结构', '趋势': '📈 趋势判断' };
+
+  return Object.keys(categories).map(cat =>
+    '<div style="margin-bottom:12px">' +
+    '<div style="font-size:0.8125rem;font-weight:700;color:var(--accent);margin-bottom:6px;letter-spacing:0.02em">' + (catLabels[cat] || cat) + '</div>' +
+    categories[cat].map(n =>
+      '<div style="padding:8px 12px;margin-bottom:4px;background:#faf7f3;border-radius:6px;font-size:0.8125rem;line-height:1.6;color:var(--text)">' + replaceIdsWithNames(n) + '</div>'
+    ).join('') +
+    '</div>'
+  ).join('');
+}
+
+// ═══════════════════════════════════
 // COPY & EXPORT
 // ═══════════════════════════════════
 function stripHtml(s) { const d = document.createElement('div'); d.innerHTML = s; return d.textContent || d.innerText || ''; }
@@ -1701,17 +2196,26 @@ function getOutputText() {
   // ── 方案简介（纯文本） ──
   text += `## 📖 方案简介\n\n${stripHtml(generatePitch())}\n\n`;
 
-  // ── 观众旅程（纯文本） ──
+  // ── 观众旅程（折叠，仅简要） ──
   text += `## 👀 观众旅程\n\n`;
   text += stripHtml(generateViewerJourney()) + '\n\n';
+  text += `> 💡 此板块为辅助参考，核心分析见因果推导链与边界条件。\n\n`;
 
   // ── 核心看点（纯文本） ──
   text += `## 💡 核心看点\n\n`;
   text += stripHtml(generateHighlights()) + '\n\n';
 
-  // ── 组合公式 ──
-  text += `## 🧬 组合公式\n\`\`\`\n${generateFormula()}\n\`\`\`\n\n`;
+  // ── 因果推导链 ──
+  text += `## 🧠 因果推导链\n\n`;
+  text += stripHtml(generateCausalAnalysis()) + '\n\n';
 
+  // ── 边界条件 ──
+  text += `## ⚠️ 边界条件 & 失效分析\n\n`;
+  text += stripHtml(generateBoundaryConditions()) + '\n\n';
+
+  // ── 中国市场适配 ──
+  text += `## 🌏 中国市场适配\n\n`;
+  text += stripHtml(generateMarketNotes()) + '\n\n';
 
   // ── 组合公式 ──
   text += `## 🧬 组合公式\n\`\`\`\n${generateFormula()}\n\`\`\`\n\n`;
