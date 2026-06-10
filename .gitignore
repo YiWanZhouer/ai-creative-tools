@@ -1,5 +1,7 @@
-# Ignore everything except HTML
+# Ignore everything except HTML and change records
 *
 !*.html
 !README.md
 !.gitignore
+!变更记录/
+!变更记录/*.md
