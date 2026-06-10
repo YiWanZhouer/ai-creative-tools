@@ -1843,9 +1843,10 @@ function generate() {
   html += '<h3>📖 方案简介</h3>';
   html += `<div class="output__pitch">${generatePitch()}</div>`;
 
-  // ── Viewer Journey ──
-  html += '<h3>👀 观众旅程</h3>';
-  html += `<div class="output__journey">${generateViewerJourney()}</div>`;
+  // ── Viewer Journey (collapsed by default) ──
+  html += '<details style="margin-bottom:16px;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden">';
+  html += '<summary style="cursor:pointer;padding:10px 16px;font-size:0.8125rem;font-weight:700;color:var(--text-muted);background:#fdf9f4;user-select:none;letter-spacing:0.02em;text-transform:uppercase">👀 观众旅程 ▸</summary>';
+  html += `<div style="padding:12px 16px">${generateViewerJourney()}</div></details>`;
 
   // ── Highlights ──
   html += '<h3>💡 核心看点</h3>';
@@ -2063,6 +2064,23 @@ function getSelectedIds() {
   return ids;
 }
 
+// 将文本中的元素代号（F4/V2/E1等）替换为中文全称
+function replaceIdsWithNames(text) {
+  if (!text) return text;
+  let result = text;
+  // Sort by ID length descending so E10 replaces before E1
+  const sortedIds = Object.keys(elementMap).sort((a, b) => b.length - a.length);
+  sortedIds.forEach(id => {
+    const el = elementMap[id];
+    if (el) {
+      // Match whole word IDs only (bounded by non-word chars or string edges)
+      const regex = new RegExp('\\b' + id + '\\b', 'g');
+      result = result.replace(regex, el.label);
+    }
+  });
+  return result;
+}
+
 function generateCausalAnalysis() {
   const ids = getSelectedIds();
   if (ids.size === 0) return '<div style="color:var(--text-muted);padding:12px;font-size:0.9375rem">选择元素后，系统将自动推导因果链。</div>';
@@ -2087,20 +2105,19 @@ function generateCausalAnalysis() {
     if (chain.boundary) {
       boundaryHtml = '<div style="margin-top:10px;padding:8px 12px;background:#fdf2f0;border-radius:6px;border-left:3px solid #f87171">' +
         '<span style="color:#f87171;font-weight:600;font-size:0.75rem">⚠️ 边界条件</span><br>' +
-        '<span style="color:var(--text);font-size:0.8125rem;line-height:1.6">' + chain.boundary + '</span></div>';
+        '<span style="color:var(--text);font-size:0.8125rem;line-height:1.6">' + replaceIdsWithNames(chain.boundary) + '</span></div>';
     }
 
     let chinaHtml = '';
     if (chain.china_note) {
       chinaHtml = '<div style="margin-top:6px;padding:8px 12px;background:#f0f4f8;border-radius:6px;border-left:3px solid var(--accent)">' +
         '<span style="color:var(--accent);font-weight:600;font-size:0.75rem">🇨🇳 中国市场</span><br>' +
-        '<span style="color:var(--text);font-size:0.8125rem;line-height:1.6">' + chain.china_note + '</span></div>';
+        '<span style="color:var(--text);font-size:0.8125rem;line-height:1.6">' + replaceIdsWithNames(chain.china_note) + '</span></div>';
     }
 
     return '<details style="margin-bottom:10px;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden" ' + (i === 0 ? 'open' : '') + '>' +
       '<summary style="cursor:pointer;padding:10px 16px;font-size:0.875rem;font-weight:700;color:var(--text);background:#fdf9f4;user-select:none;display:flex;align-items:center;gap:8px">' +
       '<span style="color:var(--accent)">🧬</span>' + chain.name +
-      '<span style="margin-left:auto;font-size:0.6875rem;color:var(--text-muted);font-weight:400">' + chain.id + '</span>' +
       '</summary>' +
       '<div style="padding:14px 16px">' + stepsHtml + boundaryHtml + chinaHtml + '</div></details>';
   }).join('');
@@ -2123,16 +2140,15 @@ function generateBoundaryConditions() {
 
   return matches.slice(0, 5).map(bc =>
     '<div style="padding:12px 14px;margin-bottom:8px;background:#fdf9f4;border-radius:var(--radius-sm);border-left:3px solid var(--dominant)">' +
-    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
-    '<span style="font-size:0.75rem;font-weight:700;color:var(--dominant)">' + bc.id + '</span>' +
+    '<div style="margin-bottom:6px">' +
     '<span style="font-weight:700;color:var(--text);font-size:0.9375rem">' + bc.name + '</span>' +
     '</div>' +
     '<div style="font-size:0.8125rem;color:var(--text-muted);margin-bottom:6px;line-height:1.6">' +
-    '<strong>触发：</strong>' + bc.condition + '</div>' +
+    '<strong>触发：</strong>' + replaceIdsWithNames(bc.condition) + '</div>' +
     '<div style="font-size:0.8125rem;color:var(--text);margin-bottom:6px;line-height:1.6">' +
-    '<strong>症状：</strong>' + bc.symptom + '</div>' +
+    '<strong>症状：</strong>' + replaceIdsWithNames(bc.symptom) + '</div>' +
     '<div style="font-size:0.8125rem;color:var(--selected);line-height:1.6">' +
-    '<strong>💡 修复：</strong>' + bc.fix + '</div>' +
+    '<strong>💡 修复：</strong>' + replaceIdsWithNames(bc.fix) + '</div>' +
     '</div>'
   ).join('');
 }
@@ -2162,7 +2178,7 @@ function generateMarketNotes() {
     '<div style="margin-bottom:12px">' +
     '<div style="font-size:0.8125rem;font-weight:700;color:var(--accent);margin-bottom:6px;letter-spacing:0.02em">' + (catLabels[cat] || cat) + '</div>' +
     categories[cat].map(n =>
-      '<div style="padding:8px 12px;margin-bottom:4px;background:#faf7f3;border-radius:6px;font-size:0.8125rem;line-height:1.6;color:var(--text)">' + n + '</div>'
+      '<div style="padding:8px 12px;margin-bottom:4px;background:#faf7f3;border-radius:6px;font-size:0.8125rem;line-height:1.6;color:var(--text)">' + replaceIdsWithNames(n) + '</div>'
     ).join('') +
     '</div>'
   ).join('');
@@ -2180,9 +2196,10 @@ function getOutputText() {
   // ── 方案简介（纯文本） ──
   text += `## 📖 方案简介\n\n${stripHtml(generatePitch())}\n\n`;
 
-  // ── 观众旅程（纯文本） ──
+  // ── 观众旅程（折叠，仅简要） ──
   text += `## 👀 观众旅程\n\n`;
   text += stripHtml(generateViewerJourney()) + '\n\n';
+  text += `> 💡 此板块为辅助参考，核心分析见因果推导链与边界条件。\n\n`;
 
   // ── 核心看点（纯文本） ──
   text += `## 💡 核心看点\n\n`;
