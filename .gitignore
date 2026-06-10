@@ -1,4 +1,5 @@
 # Ignore everything except HTML
 *
 !*.html
+!README.md
 !.gitignore
