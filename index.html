@@ -5,94 +5,233 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI 创意工具箱</title>
 <style>
+  :root {
+    --bg: #1a1b26;
+    --bg-card: #222433;
+    --text: #c8c9d8;
+    --text-dim: #8a8ba0;
+    --border: rgba(255,255,255,0.06);
+
+    /* 功能色 —— 同调约束：S 38-43%, L 55-65% (暗色模式) */
+    --accent: #7b8cff;
+    --accent-dim: rgba(123,140,255,0.12);
+    --accent-glow: rgba(123,140,255,0.25);
+    --dominant: #d4956b;
+    --dominant-dim: rgba(212,149,107,0.12);
+    --dominant-glow: rgba(212,149,107,0.25);
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
+
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-    background: #f5f5f5;
+    background: var(--bg);
+    color: var(--text);
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
+
+  /* ── 页头 ── */
   .header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 40px 20px 30px;
     text-align: center;
+    padding: 56px 20px 40px;
+    width: 100%;
   }
   .header h1 {
-    font-size: 28px;
+    font-size: 26px;
     font-weight: 700;
-    margin-bottom: 8px;
+    letter-spacing: .02em;
+    color: #e2e0ed;
+    margin-bottom: 6px;
   }
-  .header p {
-    font-size: 15px;
-    opacity: 0.85;
+  .header .subtitle {
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: .04em;
   }
+
+  /* ── 工具卡片区 ── */
   .tools {
-    max-width: 600px;
-    margin: -16px auto 40px;
-    padding: 0 16px;
+    width: 100%;
+    max-width: 580px;
+    padding: 0 20px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
   }
+
+  /* ── 步骤连接线 ── */
+  .step-connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    position: relative;
+  }
+  .step-connector::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(
+      180deg,
+      var(--accent-glow) 0%,
+      var(--dominant-glow) 100%
+    );
+  }
+  .step-arrow {
+    position: relative;
+    z-index: 1;
+    font-size: 16px;
+    color: #555;
+    background: var(--bg);
+    padding: 0 8px;
+  }
+
+  /* ── 卡片 ── */
   .tool-card {
-    background: white;
-    border-radius: 12px;
-    padding: 20px 24px;
-    margin-top: 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     display: block;
     text-decoration: none;
     color: inherit;
-    transition: transform .15s, box-shadow .15s;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 28px;
+    position: relative;
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+    overflow: hidden;
   }
   .tool-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
   }
+  .tool-card:active {
+    transform: translateY(0);
+  }
+
+  /* 卡片顶部色条 */
+  .tool-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+
+  /* 步骤编号 */
+  .step-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
   .tool-card .icon {
-    font-size: 32px;
+    font-size: 28px;
     margin-bottom: 8px;
+    line-height: 1;
   }
   .tool-card h2 {
     font-size: 18px;
-    color: #333;
+    font-weight: 600;
+    color: #e2e0ed;
     margin-bottom: 4px;
   }
   .tool-card p {
-    font-size: 14px;
-    color: #888;
-    line-height: 1.5;
-  }
-  .tip {
-    text-align: center;
-    color: #aaa;
     font-size: 13px;
-    margin-top: 24px;
-    padding-bottom: 40px;
+    color: var(--text-dim);
+    line-height: 1.55;
+  }
+
+  /* ── 方案骨架生成器（第一步，accent 色系）── */
+  .card-skeleton {
+    border-color: rgba(123,140,255,0.15);
+  }
+  .card-skeleton::before {
+    background: var(--accent);
+  }
+  .card-skeleton:hover {
+    border-color: rgba(123,140,255,0.35);
+    box-shadow: 0 0 32px var(--accent-dim), 0 4px 20px rgba(0,0,0,0.3);
+  }
+  .card-skeleton .step-badge {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  /* ── 创意方案生成器（第二步，dominant 色系）── */
+  .card-generator {
+    border-color: rgba(212,149,107,0.15);
+  }
+  .card-generator::before {
+    background: var(--dominant);
+  }
+  .card-generator:hover {
+    border-color: rgba(212,149,107,0.35);
+    box-shadow: 0 0 32px var(--dominant-dim), 0 4px 20px rgba(0,0,0,0.3);
+  }
+  .card-generator .step-badge {
+    background: var(--dominant-dim);
+    color: var(--dominant);
+  }
+
+  /* ── 页脚 ── */
+  .footer {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12px;
+    padding-bottom: 48px;
+  }
+  .footer .repo {
+    color: #555;
+    font-size: 11px;
+    margin-top: 4px;
   }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>🛠️ AI 创意工具箱</h1>
-  <p>YiWanZhouer / ai-creative-tools</p>
+  <h1>AI 创意工具箱</h1>
+  <p class="subtitle">综艺策划 · 从骨架到方案</p>
 </div>
 
 <div class="tools">
 
-  <a class="tool-card" href="创意方案生成器.html">
-    <div class="icon">💡</div>
-    <h2>创意方案生成器</h2>
-    <p>输入想法，一键生成完整创意方案</p>
-  </a>
-
-  <a class="tool-card" href="方案骨架生成器.html">
+  <!-- 第一步：方案骨架生成器 -->
+  <a class="tool-card card-skeleton" href="方案骨架生成器.html">
+    <span class="step-badge">1</span>
     <div class="icon">🏗️</div>
     <h2>方案骨架生成器</h2>
-    <p>快速搭建方案结构框架</p>
+    <p>八大维度 · 58 元素零件库 —— 从经典节目底层逻辑拆出来的可组合模块</p>
+  </a>
+
+  <!-- 连接线 -->
+  <div class="step-connector">
+    <span class="step-arrow">↓</span>
+  </div>
+
+  <!-- 第二步：创意方案生成器 -->
+  <a class="tool-card card-generator" href="创意方案生成器.html">
+    <span class="step-badge">2</span>
+    <div class="icon">💡</div>
+    <h2>创意方案生成器</h2>
+    <p>灵魂三问 · 三级颗粒度 —— 把策划人的直觉变成可直接汇报的方案文档</p>
   </a>
 
 </div>
 
-<p class="tip">收藏此页，随时使用 ↑</p>
+<div class="footer">
+  <p>收藏此页，随时使用 ↑</p>
+  <p class="repo">YiWanZhouer / ai-creative-tools</p>
+</div>
 
 </body>
 </html>
