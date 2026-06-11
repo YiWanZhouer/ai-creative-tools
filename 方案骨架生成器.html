@@ -194,7 +194,7 @@
   #detail-popover.detail-popover--visible {
     opacity: 1;
     transform: translateY(0);
-    pointer-events: auto;
+    pointer-events: none;
   }
   #detail-popover .popover__header {
     display: flex; align-items: center; gap: 8px;
@@ -1693,6 +1693,10 @@ function createChip(el, mode, onClick) {
   chip.addEventListener('click', onClick);
   chip.addEventListener('mouseenter', () => showPopover(el, chip));
   chip.addEventListener('mouseleave', () => hidePopover(el));
+		chip.addEventListener('touchend', (e) => {
+			e.preventDefault();
+			showPopover(el, chip);
+		});
   return chip;
 }
 
@@ -3058,6 +3062,21 @@ function hideDiagnosisReport() {
 // ═══════════════════════════════════
 // INIT
 // ═══════════════════════════════════
+
+	// 全局关闭 popover：点击/触摸 chip 以外区域自动隐藏
+	document.addEventListener('click', (e) => {
+		if (!e.target.closest('.chip')) {
+			hidePopover();
+		}
+	});
+	document.addEventListener('touchend', (e) => {
+		if (!e.target.closest('.chip')) {
+			hidePopover();
+		}
+	});
+	// 滚动时自动隐藏 popover
+	window.addEventListener('scroll', () => hidePopover(), { passive: true });
+
 renderAll();
 </script>
 </body>
