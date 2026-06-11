@@ -2088,10 +2088,11 @@ function rerenderOutputBody(content) {
 }
 
 function renderMarkdownBody(md) {
-  // Reuse renderMarkdown but extract just the body content
-  const full = renderMarkdown(md);
-  const bodyMatch = full.match(/<div class="output-card-body"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/);
-  return bodyMatch ? bodyMatch[1] : full;
+  // Use DOM parsing to extract body content (regex fails on nested divs)
+  const temp = document.createElement('div');
+  temp.innerHTML = renderMarkdown(md);
+  const body = temp.querySelector('.output-card-body');
+  return body ? body.innerHTML : temp.innerHTML;
 }
 
 // ==================== KEYBOARD SHORTCUT ====================
