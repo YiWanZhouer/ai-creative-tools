@@ -1,7 +1,7 @@
 <!-- ═══════════════════════════════════
-  创意方案生成器 · v2
-  变更: 集成矛盾诊断规则引擎
-  日期: 2026-06-10
+  创意方案生成器 · v2.1
+  变更: fix: 修复行内 style 覆盖 CSS 类导致编辑面板不显示；fix: renderMarkdownBody 正则改为 DOM 解析；集成矛盾诊断规则引擎
+  日期: 2026-06-11
   ═══════════════════════════════════ -->
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -763,7 +763,6 @@
       <div class="settings-field">
         <label>API Endpoint</label>
         <input type="text" id="apiEndpoint" placeholder="https://api.deepseek.com/v1/chat/completions">
-        <span class="hint">DeepSeek 官方 API。如遇 CORS 拦截，改填 http://localhost:8010/v1/chat/completions（需先运行 node proxy.js）</span>
       </div>
       <div class="settings-field">
         <label>API Key</label>
@@ -1828,7 +1827,7 @@ function buildOutputFooter() {
     '<button class="btn btn-secondary" onclick="switchAndRegenerate(\'standard\')">🟡 标准</button>' +
     '<button class="btn btn-secondary" onclick="switchAndRegenerate(\'expanded\')">🔴 展开</button>' +
     '</div>' +
-    '<div class="edit-panel" id="editPanel" style="display:none;">' +
+    '<div class="edit-panel" id="editPanel">' +
     '<label>编辑方案内容</label>' +
     '<textarea id="editTextarea"></textarea>' +
     '<div class="refine-input">' +
@@ -1955,6 +1954,7 @@ function renderMarkdown(md) {
 function toggleEditPanel() {
   const panel = document.getElementById('editPanel');
   const textarea = document.getElementById('editTextarea');
+  if (!panel || !textarea) return;
   const outputArea = document.getElementById('outputArea');
   const isVisible = panel.classList.contains('visible');
 
