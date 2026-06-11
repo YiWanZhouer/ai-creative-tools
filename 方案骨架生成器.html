@@ -1,3 +1,8 @@
+<!-- ═══════════════════════════════════
+  方案骨架生成器 · v1.1
+  变更: add AbortController timeout to AI fetch calls (fix mobile spinner hang)
+  日期: 2026-06-11
+  ═══════════════════════════════════ -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -55,6 +60,13 @@
     color: var(--text); margin-right: auto;
   }
   .topbar .logo span { color: var(--accent); }
+
+	  .topbar__version {
+	    font-size: 0.6875rem; color: var(--text-muted); font-weight: 500;
+	    letter-spacing: 0.04em; font-family: "SF Mono", "Fira Code", monospace;
+	    padding: 2px 8px; border: 1px solid var(--border); border-radius: 100px;
+	    white-space: nowrap;
+	  }
 
   /* ── Buttons ── */
   .btn {
@@ -655,6 +667,7 @@
 	  <button class="btn btn--ai" id="btnBrainstorm" onclick="aiBrainstorm()" title="AI 创意脑暴">🧠 脑暴</button>
 	  <button class="btn btn--ai" id="btnDiagnose" onclick="aiDiagnose()" title="AI 诊断审阅">🔍 诊断</button>
 	  <button class="btn btn--ai" id="btnBusiness" onclick="aiBusiness()" title="AI 商业分析">💼 商业</button>
+		  <span class="topbar__version">v1.1</span>
 </div>
 
 
@@ -2353,17 +2366,26 @@ async function callDeepSeek(a, b, c) {
     temperature = (c !== undefined) ? c : 0.8;
   }
 
+  // 30s timeout — mobile networks can hang silently without AbortController
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
   let response;
   try {
     response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiConfig.apiKey },
-      body: JSON.stringify({ model: apiConfig.model, messages, temperature, max_tokens: 4096 })
+      body: JSON.stringify({ model: apiConfig.model, messages, temperature, max_tokens: 4096 }),
+      signal: controller.signal
     });
   } catch (e) {
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') throw new Error('Timeout');
     if (e.message.includes('Failed to fetch') || e.name === 'TypeError') throw new Error('CORS');
     throw new Error('Network: ' + e.message);
   }
+  clearTimeout(timeoutId);
+
   if (!response.ok) {
     if (response.status === 401) throw new Error('KeyInvalid');
     if (response.status === 429) throw new Error('RateLimit');
@@ -2377,7 +2399,9 @@ async function callDeepSeek(a, b, c) {
 function formatError(type) {
   switch (type) {
     case 'CORS':
-      return '⚠️ 浏览器安全策略阻止了直接调用 DeepSeek API。<br>解决方法：安装浏览器 CORS 插件，或使用本地代理转发请求。';
+      return '⚠️ 浏览器安全策略阻止了直接调用 DeepSeek API。<br>手机端常见原因：iOS Safari 对跨域请求限制更严格。<br>解决方法：① 使用桌面端 Chrome + CORS 插件 ② 或通过本地代理转发请求。';
+    case 'Timeout':
+      return '⏰ API 请求超时（30 秒无响应）。<br>可能原因：① 手机网络不稳定 ② DeepSeek 服务端排队。<br>建议：切换 Wi-Fi 或稍后重试。';
     case 'KeyInvalid':
       return '🔑 API Key 无效（401）。请检查 Key 是否正确，或前往 <a href="https://platform.deepseek.com/api_keys" target="_blank">DeepSeek 开放平台</a> 重新获取。';
     case 'RateLimit':
@@ -2691,12 +2715,17 @@ async function testConnection() {
   btn.disabled = true;
   btn.textContent = '⏳ 测试中…';
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
   try {
     const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({ model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 10 })
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 10 }),
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
     if (resp.ok) {
       showToast('✅ 连接成功 — ' + model);
     } else if (resp.status === 401) {
@@ -2706,7 +2735,12 @@ async function testConnection() {
       showToast('❌ ' + resp.status + ': ' + t.slice(0, 60));
     }
   } catch (e) {
-    showToast('🌐 网络错误，可能需要 CORS 插件');
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') {
+      showToast('⏰ 连接超时（15秒），网络可能不稳定');
+    } else {
+      showToast('🌐 网络错误，可能需要 CORS 插件');
+    }
   }
   btn.disabled = false;
   btn.textContent = '🔗 测试连接';
