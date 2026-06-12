@@ -1,6 +1,6 @@
 <!-- ═══════════════════════════════════
-  创意方案生成器 · v2.2
-  变更: feat: server mode support (IS_SERVER_MODE flag, /api/* proxy endpoint). No API Key needed when served via nginx. Backward compatible with file://.
+  创意方案生成器 · v2.3
+  变更: style: 设置弹窗 UI 对齐方案骨架生成器（modal-overlay 体系、统一字段样式、状态栏、服务器模式指示）；新增 btn--primary / btn--ghost 按钮体系
   日期: 2026-06-12
   ═══════════════════════════════════ -->
 <!DOCTYPE html>
@@ -33,6 +33,11 @@
     --shadow-md: 0 4px 16px rgba(0,0,0,0.06);
     --shadow-lg: 0 12px 36px rgba(0,0,0,0.1);
     --radius: 8px;
+    --radius-sm: 6px;
+    --card: #ffffff;
+    --text-muted: #8a8278;
+    --selected: #4a8c5c;
+    --transition: 0.15s;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -86,49 +91,63 @@
   .settings-gear:hover { background: var(--surface-raised); color: var(--primary); }
 
   /* ===== SETTINGS MODAL ===== */
-  .settings-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.3);
-    z-index: 3000; display: flex; align-items: center; justify-content: center;
-    animation: fadeIn 0.2s ease;
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 3000;
+    background: rgba(0,0,0,0.3); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
   }
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  .settings-modal {
-    background: var(--surface); border-radius: var(--radius);
-    max-width: 500px; width: 90%; box-shadow: var(--shadow-lg);
-    border: 1px solid var(--border);
-    animation: slideUp 0.3s ease;
+  .modal-overlay--visible { display: flex; }
+  .modal {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 28px;
+    width: 420px; max-width: calc(100vw - 32px);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 8px 48px rgba(0,0,0,0.06);
+    animation: modalIn 200ms ease;
   }
-  @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-  .settings-modal-header {
-    padding: 24px 28px 16px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
   }
-  .settings-modal-header h3 { font-family: 'Noto Serif SC', serif; font-size: 18px; font-weight: 700; color: var(--text); }
-  .settings-modal-close {
-    background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-secondary);
+  .modal__title {
+    font-size: 1.125rem; font-weight: 700; color: var(--text);
+    margin-bottom: 6px;
   }
-  .settings-modal-body { padding: 24px 28px; }
-  .settings-field { margin-bottom: 18px; }
-  .settings-field label {
-    display: block; font-size: 11px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 6px;
+  .modal__desc {
+    font-size: 0.875rem; color: var(--text-muted); margin-bottom: 20px;
+    line-height: 1.6;
   }
-  .settings-field input, .settings-field select {
-    width: 100%; padding: 10px 14px; border: 1px solid var(--border);
-    border-radius: 6px; font-size: 14px; font-family: inherit;
-    background: var(--bg); color: var(--text);
-    transition: border-color 0.2s;
+  .modal__desc a { color: var(--primary); }
+  .modal__field { margin-bottom: 16px; }
+  .modal__field label {
+    display: block; font-size: 0.75rem; font-weight: 600;
+    color: var(--text-muted); margin-bottom: 6px;
+    letter-spacing: 0.03em; text-transform: uppercase;
   }
-  .settings-field input:focus, .settings-field select:focus {
-    outline: none; border-color: var(--primary);
+  .modal__input-row { display: flex; gap: 8px; }
+  .modal__input-row input {
+    flex: 1; padding: 10px 14px;
+    background: #f5f2ed; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-size: 0.875rem; font-family: "SF Mono", "Fira Code", monospace;
+    outline: none; transition: border-color var(--transition);
   }
-  .settings-field .hint {
-    font-size: 11px; color: var(--text-secondary); margin-top: 4px;
+  .modal__input-row input:focus { border-color: var(--primary); }
+  .modal__input-row .btn { flex-shrink: 0; }
+  .modal__status { font-size: 0.8125rem; margin-top: 8px; font-weight: 500; }
+  .modal__status--ok { color: var(--selected); }
+  .modal__status--warn { color: var(--warning); }
+  .modal__actions { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+  .modal__field input[type="text"],
+  .modal__field select {
+    width: 100%; padding: 10px 14px;
+    background: #f5f2ed; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-size: 0.875rem; font-family: inherit;
+    outline: none; cursor: pointer;
+    transition: border-color var(--transition);
   }
-  .settings-modal-footer {
-    padding: 16px 28px 24px; display: flex; gap: 10px; justify-content: flex-end;
-    border-top: 1px solid var(--border);
-  }
+  .modal__field input[type="text"]:focus,
+  .modal__field select:focus { border-color: var(--primary); }
 
   .btn {
     padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 600;
@@ -141,6 +160,10 @@
   .btn-secondary:hover { background: var(--border); }
   .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
   .btn-danger:hover { background: var(--danger-bg); }
+  .btn--primary { background: var(--primary); color: #fff; border: 1px solid var(--primary); font-weight: 600; }
+  .btn--primary:hover { background: #d4784a; }
+  .btn--ghost { background: transparent; border: 1px solid transparent; color: var(--text); }
+  .btn--ghost:hover { background: rgba(0,0,0,0.04); }
 
   /* ===== WRAPPER ===== */
   .wrapper { max-width: 960px; margin: 0 auto; padding: 0 24px; }
@@ -574,7 +597,7 @@
 <!-- Hero -->
 <header class="hero">
   <div class="hero-content">
-    <div class="badge">四维设计矩阵 · v2.2 · DeepSeek V4 Pro</div>
+    <div class="badge">四维设计矩阵 · v2.3 · DeepSeek V4 Pro</div>
     <h1>创意方案生成器</h1>
     <p class="subtitle">四维设计矩阵 ➔ 输入层 ➔ 三个颗粒度输出</p>
   </div>
@@ -753,46 +776,47 @@
 </footer>
 
 <!-- Settings Modal -->
-<div class="settings-overlay" id="settingsOverlay" style="display:none;" onclick="if(event.target===this)closeSettings()">
-  <div class="settings-modal">
-    <div class="settings-modal-header">
-      <h3>⚙ API 设置</h3>
-      <button class="settings-modal-close" onclick="closeSettings()">✕</button>
+<div class="modal-overlay" id="settingsModal" onclick="closeSettings()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal__title">⚙️ API 设置</div>
+    <div class="modal__desc">
+      使用 DeepSeek API 为创意方案生成器提供 AI 生成能力。
+      <a href="https://platform.deepseek.com/api_keys" target="_blank">获取 API Key →</a>
     </div>
-    <div class="settings-modal-body">
-      <div class="settings-field">
-        <label>API Endpoint</label>
-        <input type="text" id="apiEndpoint" placeholder="https://api.deepseek.com/v1/chat/completions">
-      </div>
-      <div class="settings-field">
-        <label>API Key</label>
-        <div style="display:flex;gap:0;align-items:stretch;">
-          <input type="password" id="apiKey" placeholder="sk-..." style="flex:1;border-radius:6px 0 0 6px;border-right:none;">
-          <button id="apiKeyToggle" onclick="toggleApiKeyVisibility()" style="padding:0 14px;border:1px solid var(--border);border-radius:0 6px 6px 0;background:var(--surface);color:var(--text-secondary);cursor:pointer;font-size:14px;transition:all 0.15s;" title="显示/隐藏">👁</button>
-        </div>
-        <span class="hint">密钥仅保存在浏览器 localStorage，不会上传到任何第三方</span>
-      </div>
-      <div class="settings-field">
-        <label>Model</label>
-        <select id="apiModel">
-          <option value="deepseek-v4-pro">deepseek-v4-pro</option>
-          <option value="deepseek-v4-flash">deepseek-v4-flash</option>
-        </select>
-        <span class="hint">V4 Pro = 旗舰精度；V4 Flash = 更快更省</span>
-      </div>
-      <div class="settings-field">
-        <label>Temperature（创意度）</label>
-        <select id="apiTemperature">
-          <option value="0.7">0.7 — 平衡（推荐）</option>
-          <option value="0.5">0.5 — 保守</option>
-          <option value="0.9">0.9 — 大胆</option>
-          <option value="1.2">1.2 — 狂野</option>
-        </select>
-      </div>
+    <div class="modal__field">
+      <label>API Endpoint</label>
+      <input type="text" id="apiEndpoint" placeholder="https://api.deepseek.com/v1/chat/completions">
     </div>
-    <div class="settings-modal-footer">
-      <button class="btn btn-secondary" onclick="testConnection()">🔌 测试连接</button>
-      <button class="btn btn-primary" onclick="saveSettings()">💾 保存设置</button>
+    <div class="modal__field">
+      <label>API Key</label>
+      <div class="modal__input-row">
+        <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off">
+        <button class="btn btn--ghost" onclick="toggleKeyVisibility()" title="显示/隐藏" style="padding:8px 10px">👁️</button>
+      </div>
+      <div class="modal__status" id="apiKeyStatus"></div>
+    </div>
+    <div class="modal__field">
+      <label>模型</label>
+      <select id="modelSelect">
+        <option value="deepseek-v4-pro">DeepSeek V4 Pro（推荐）</option>
+        <option value="deepseek-v4-flash">DeepSeek V4 Flash（快速）</option>
+      </select>
+    </div>
+    <div class="modal__field">
+      <label>Temperature（创意度）</label>
+      <select id="apiTemperature">
+        <option value="0.7">0.7 — 平衡（推荐）</option>
+        <option value="0.5">0.5 — 保守</option>
+        <option value="0.9">0.9 — 大胆</option>
+        <option value="1.2">1.2 — 狂野</option>
+      </select>
+    </div>
+    <div class="modal__actions">
+      <button class="btn btn--ghost" onclick="clearSettings()">清除</button>
+      <button class="btn" onclick="closeSettings()">取消</button>
+      <button class="btn btn--ghost" onclick="testConnection()" id="btnTestConn">🔗 测试连接</button>
+      <span style="flex:1"></span>
+      <button class="btn btn--primary" onclick="saveSettings()">保存</button>
     </div>
   </div>
 </div>
@@ -1304,36 +1328,57 @@ const SERVER_ENDPOINT = '/api/v1/chat/completions';
 // ==================== SETTINGS ====================
 function loadSettings() {
   const s = JSON.parse(localStorage.getItem('proposalGenSettings') || '{}');
+  const input = document.getElementById('apiKeyInput');
+  const status = document.getElementById('apiKeyStatus');
+
   if (IS_SERVER_MODE) {
     // Server mode: use proxy endpoint, disable Key input
     document.getElementById('apiEndpoint').value = SERVER_ENDPOINT;
     document.getElementById('apiEndpoint').disabled = true;
-    document.getElementById('apiKey').value = '✅ 服务器已提供';
-    document.getElementById('apiKey').disabled = true;
-    document.getElementById('apiKey').placeholder = '✅ 服务器已提供';
-    document.getElementById('apiKeyToggle').style.display = 'none';
+    input.value = '✅ 服务器已提供';
+    input.disabled = true;
+    input.placeholder = '✅ 服务器已提供';
+    document.getElementById('modelSelect').disabled = true;
+    status.textContent = '✅ 服务器模式 — API Key 由服务器统一管理';
+    status.className = 'modal__status modal__status--ok';
+    const testBtn = document.getElementById('btnTestConn');
+    if (testBtn) testBtn.style.display = 'none';
   } else {
     document.getElementById('apiEndpoint').value = s.endpoint || 'https://api.deepseek.com/v1/chat/completions';
     document.getElementById('apiEndpoint').disabled = false;
-    document.getElementById('apiKey').value = s.apiKey || '';
-    document.getElementById('apiKey').disabled = false;
-    document.getElementById('apiKeyToggle').style.display = '';
+    input.value = s.apiKey || '';
+    input.disabled = false;
+    document.getElementById('modelSelect').disabled = false;
+    if (s.apiKey) {
+      status.textContent = '✅ Key 已就绪';
+      status.className = 'modal__status modal__status--ok';
+    } else {
+      status.textContent = '请填入 DeepSeek API Key';
+      status.className = 'modal__status modal__status--warn';
+    }
   }
-  document.getElementById('apiModel').value = s.model || 'deepseek-v4-pro';
+  document.getElementById('modelSelect').value = s.model || 'deepseek-v4-pro';
   document.getElementById('apiTemperature').value = s.temperature || '0.7';
 }
 
 function saveSettings() {
   if (IS_SERVER_MODE) { showToast('✅ 服务器模式 — 无需手动设置'); return; }
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key.startsWith('sk-')) {
+    showToast('⚠️ Key 格式看起来不对（应以 sk- 开头）');
+    return;
+  }
   const settings = {
     endpoint: document.getElementById('apiEndpoint').value.trim(),
-    apiKey: document.getElementById('apiKey').value.trim(),
-    model: document.getElementById('apiModel').value.trim(),
+    apiKey: key,
+    model: document.getElementById('modelSelect').value.trim(),
     temperature: document.getElementById('apiTemperature').value
   };
   localStorage.setItem('proposalGenSettings', JSON.stringify(settings));
-  closeSettings();
+  document.getElementById('apiKeyStatus').textContent = '✅ Key 已就绪';
+  document.getElementById('apiKeyStatus').className = 'modal__status modal__status--ok';
   showToast('✅ 设置已保存');
+  closeSettings();
 }
 
 function getSettings() {
@@ -1347,42 +1392,47 @@ function getSettings() {
 }
 
 function toggleSettings() {
-  const overlay = document.getElementById('settingsOverlay');
-  if (overlay.style.display === 'flex') {
+  const modal = document.getElementById('settingsModal');
+  if (modal.classList.contains('modal-overlay--visible')) {
     closeSettings();
   } else {
     loadSettings();
-    overlay.style.display = 'flex';
+    modal.classList.add('modal-overlay--visible');
+    setTimeout(() => document.getElementById('apiKeyInput').focus(), 100);
   }
 }
 
 function closeSettings() {
-  document.getElementById('settingsOverlay').style.display = 'none';
+  document.getElementById('settingsModal').classList.remove('modal-overlay--visible');
 }
 
-function toggleApiKeyVisibility() {
-  const input = document.getElementById('apiKey');
-  const btn = document.getElementById('apiKeyToggle');
-  if (input.type === 'password') {
-    input.type = 'text';
-    btn.textContent = '🙈';
-  } else {
-    input.type = 'password';
-    btn.textContent = '👁';
-  }
+function toggleKeyVisibility() {
+  const input = document.getElementById('apiKeyInput');
+  const isPassword = input.type === 'password';
+  input.type = isPassword ? 'text' : 'password';
+  event.target.textContent = isPassword ? '🙈' : '👁️';
+}
+
+function clearSettings() {
+  document.getElementById('apiEndpoint').value = 'https://api.deepseek.com/v1/chat/completions';
+  document.getElementById('apiKeyInput').value = '';
+  document.getElementById('modelSelect').value = 'deepseek-v4-pro';
+  document.getElementById('apiTemperature').value = '0.7';
+  localStorage.removeItem('proposalGenSettings');
+  document.getElementById('apiKeyStatus').textContent = '请填入 DeepSeek API Key';
+  document.getElementById('apiKeyStatus').className = 'modal__status modal__status--warn';
+  showToast('🗑️ 设置已清除');
 }
 
 async function testConnection() {
   if (IS_SERVER_MODE) { showToast('✅ 服务器模式 — 无需手动测试'); return; }
-  // 直接从输入框读取（而非 localStorage），因为用户可能还没点保存
-  const key = document.getElementById('apiKey').value.trim();
+  const key = document.getElementById('apiKeyInput').value.trim();
   const endpoint = document.getElementById('apiEndpoint').value.trim();
-  const model = document.getElementById('apiModel').value;
-  if (!key) {
-    alert('请先填写 API Key');
-    return;
-  }
-  const btn = document.querySelector('.settings-modal-footer .btn-secondary');
+  const model = document.getElementById('modelSelect').value;
+  if (!key) { showToast('⚠️ 请先输入 API Key'); return; }
+  if (!key.startsWith('sk-')) { showToast('⚠️ Key 格式不对'); return; }
+
+  const btn = document.getElementById('btnTestConn');
   btn.textContent = '⏳ 测试中…';
   btn.disabled = true;
   try {
@@ -1409,7 +1459,7 @@ async function testConnection() {
   } catch (e) {
     showToast('❌ 网络错误: ' + e.message);
   }
-  btn.textContent = '🔌 测试连接';
+  btn.textContent = '🔗 测试连接';
   btn.disabled = false;
 }
 
