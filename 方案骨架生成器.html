@@ -1,7 +1,7 @@
 <!-- ═══════════════════════════════════
-  方案骨架生成器 · v1.2
-  变更: fix: 移动端 popover 滞留遮挡修复；add AbortController timeout to AI fetch calls (fix mobile spinner hang)
-  日期: 2026-06-11
+  方案骨架生成器 · v1.3
+  变更: feat: server mode support (IS_SERVER_MODE flag, /api/* proxy endpoint). No API Key needed when served via nginx. Backward compatible with file://.
+  日期: 2026-06-12
   ═══════════════════════════════════ -->
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -667,7 +667,7 @@
 	  <button class="btn btn--ai" id="btnBrainstorm" onclick="aiBrainstorm()" title="AI 创意脑暴">🧠 脑暴</button>
 	  <button class="btn btn--ai" id="btnDiagnose" onclick="aiDiagnose()" title="AI 诊断审阅">🔍 诊断</button>
 	  <button class="btn btn--ai" id="btnBusiness" onclick="aiBusiness()" title="AI 商业分析">💼 商业</button>
-		  <span class="topbar__version">v1.2</span>
+		  <span class="topbar__version">v1.3</span>
 </div>
 
 
@@ -1428,10 +1428,18 @@ const state = {
 	// ═══════════════════════════════════
 	// API CONFIG
 	// ═══════════════════════════════════
+	// ═══════════════════════════════════
+	// SERVER MODE DETECTION
+	// ═══════════════════════════════════
+	const IS_SERVER_MODE = window.location.protocol !== 'file:';
+	const SERVER_ENDPOINT = '/api/v1/chat/completions';
+	const DIRECT_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions';
+
 	const apiConfig = {
   apiKey: localStorage.getItem('ds_api_key') || '',
   model: localStorage.getItem('ds_model') || 'deepseek-v4-pro',
-	  temperature: 0.8
+	  temperature: 0.8,
+	  endpoint: IS_SERVER_MODE ? SERVER_ENDPOINT : DIRECT_ENDPOINT
 	};
 // ═══════════════════════════════════
 // ELEMENT LOOKUP
@@ -2295,10 +2303,24 @@ function openSettings() {
   input.value = apiConfig.apiKey;
   document.getElementById('modelSelect').value = apiConfig.model;
   input.type = 'password';
-  if (apiConfig.apiKey) {
+
+  if (IS_SERVER_MODE) {
+    input.disabled = true;
+    input.placeholder = '✅ 服务器已提供 Key';
+    document.getElementById('modelSelect').disabled = true;
+    status.textContent = '✅ 服务器模式 — API Key 由服务器统一管理';
+    status.className = 'modal__status modal__status--ok';
+    // 隐藏"测试连接"按钮（服务器模式下无需测试）
+    const testBtn = document.getElementById('btnTestConn');
+    if (testBtn) testBtn.style.display = 'none';
+  } else if (apiConfig.apiKey) {
+    input.disabled = false;
+    document.getElementById('modelSelect').disabled = false;
     status.textContent = '✅ Key 已就绪';
     status.className = 'modal__status modal__status--ok';
   } else {
+    input.disabled = false;
+    document.getElementById('modelSelect').disabled = false;
     status.textContent = '请填入 DeepSeek API Key';
     status.className = 'modal__status modal__status--warn';
   }
@@ -2318,6 +2340,7 @@ function toggleKeyVisibility() {
 }
 
 function saveApiKey() {
+  if (IS_SERVER_MODE) { showToast('✅ 服务器模式 — 无需手动设置 Key'); return; }
   const input = document.getElementById('apiKeyInput');
   const key = input.value.trim();
   if (!key) {
@@ -2356,7 +2379,7 @@ function clearApiKey() {
 // DEEPSEEK API
 // ═══════════════════════════════════
 async function callDeepSeek(a, b, c) {
-  if (!apiConfig.apiKey) { openSettings(); throw new Error('API Key 未设置'); }
+  if (!IS_SERVER_MODE && !apiConfig.apiKey) { openSettings(); throw new Error('API Key 未设置'); }
 
   let messages, temperature;
   if (Array.isArray(a)) {
@@ -2376,9 +2399,14 @@ async function callDeepSeek(a, b, c) {
 
   let response;
   try {
-    response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    // Server mode: no Authorization header (nginx injects it); client mode: Bearer token
+    const headers = { 'Content-Type': 'application/json' };
+    if (!IS_SERVER_MODE) {
+      headers['Authorization'] = 'Bearer ' + apiConfig.apiKey;
+    }
+    response = await fetch(apiConfig.endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiConfig.apiKey },
+      headers: headers,
       body: JSON.stringify({ model: apiConfig.model, messages, temperature, max_tokens: 4096 }),
       signal: controller.signal
     });
@@ -2465,7 +2493,7 @@ function setAIButtonLoading(btnId, loading) {
 
 async function aiPolish() {
   if (!hasAnySelection()) { showToast('⚠️ 请先选择元素并生成方案'); return; }
-  if (!apiConfig.apiKey) { openSettings(); return; }
+  if (!IS_SERVER_MODE && !apiConfig.apiKey) { openSettings(); return; }
 
   setAIButtonLoading('btnPolish', true);
   try {
@@ -2490,7 +2518,7 @@ async function aiPolish() {
 
 async function aiBrainstorm() {
   if (!hasAnySelection()) { showToast('⚠️ 请先选择元素并生成方案'); return; }
-  if (!apiConfig.apiKey) { openSettings(); return; }
+  if (!IS_SERVER_MODE && !apiConfig.apiKey) { openSettings(); return; }
 
   setAIButtonLoading('btnBrainstorm', true);
   try {
@@ -2523,7 +2551,7 @@ async function aiDiagnose() {
   renderDiagnosisReport(clientResults, true);
 
   // Step 2: AI deep analysis (if API key available)
-  if (!apiConfig.apiKey) {
+  if (!IS_SERVER_MODE && !apiConfig.apiKey) {
     showToast('✅ 诊断完成（客户端规则引擎）');
     return;
   }
@@ -2557,7 +2585,7 @@ async function aiDiagnose() {
 
 async function aiBusiness() {
   if (!hasAnySelection()) { showToast('⚠️ 请先选择元素并生成方案'); return; }
-  if (!apiConfig.apiKey) { openSettings(); return; }
+  if (!IS_SERVER_MODE && !apiConfig.apiKey) { openSettings(); return; }
 
   setAIButtonLoading('btnBusiness', true);
   try {
@@ -2654,7 +2682,7 @@ async function aiContinue(type, temp) {
   if (!input) return;
   const text = input.value.trim();
   if (!text) return;
-  if (!apiConfig.apiKey) { openSettings(); return; }
+  if (!IS_SERVER_MODE && !apiConfig.apiKey) { openSettings(); return; }
   const ctx = window._aiContexts && window._aiContexts[type];
   if (!ctx) { showToast('⚠️ 请先生成 AI 分析'); return; }
 
@@ -2713,6 +2741,11 @@ async function testConnection() {
   const btn = document.getElementById('btnTestConn');
   const key = document.getElementById('apiKeyInput').value.trim();
   const model = document.getElementById('modelSelect').value;
+
+  if (IS_SERVER_MODE) {
+    showToast('✅ 服务器模式 — 无需手动测试连接');
+    return;
+  }
   if (!key) { showToast('⚠️ 请先输入 API Key'); return; }
   if (!key.startsWith('sk-')) { showToast('⚠️ Key 格式不对'); return; }
 
@@ -2723,7 +2756,7 @@ async function testConnection() {
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
-    const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    const resp = await fetch(apiConfig.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
       body: JSON.stringify({ model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 10 }),

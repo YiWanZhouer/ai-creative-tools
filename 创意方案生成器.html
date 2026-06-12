@@ -1,7 +1,7 @@
 <!-- ═══════════════════════════════════
-  创意方案生成器 · v2.1
-  变更: fix: 修复行内 style 覆盖 CSS 类导致编辑面板不显示；fix: renderMarkdownBody 正则改为 DOM 解析；集成矛盾诊断规则引擎
-  日期: 2026-06-11
+  创意方案生成器 · v2.2
+  变更: feat: server mode support (IS_SERVER_MODE flag, /api/* proxy endpoint). No API Key needed when served via nginx. Backward compatible with file://.
+  日期: 2026-06-12
   ═══════════════════════════════════ -->
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -574,7 +574,7 @@
 <!-- Hero -->
 <header class="hero">
   <div class="hero-content">
-    <div class="badge">四维设计矩阵 · v2.1 · DeepSeek V4 Pro</div>
+    <div class="badge">四维设计矩阵 · v2.2 · DeepSeek V4 Pro</div>
     <h1>创意方案生成器</h1>
     <p class="subtitle">四维设计矩阵 ➔ 输入层 ➔ 三个颗粒度输出</p>
   </div>
@@ -1297,16 +1297,34 @@ function checkDimWarnings() {
   }
 }
 
+// ==================== SERVER MODE DETECTION ====================
+const IS_SERVER_MODE = window.location.protocol !== 'file:';
+const SERVER_ENDPOINT = '/api/v1/chat/completions';
+
 // ==================== SETTINGS ====================
 function loadSettings() {
   const s = JSON.parse(localStorage.getItem('proposalGenSettings') || '{}');
-  document.getElementById('apiEndpoint').value = s.endpoint || 'https://api.deepseek.com/v1/chat/completions';
-  document.getElementById('apiKey').value = s.apiKey || '';
+  if (IS_SERVER_MODE) {
+    // Server mode: use proxy endpoint, disable Key input
+    document.getElementById('apiEndpoint').value = SERVER_ENDPOINT;
+    document.getElementById('apiEndpoint').disabled = true;
+    document.getElementById('apiKey').value = '✅ 服务器已提供';
+    document.getElementById('apiKey').disabled = true;
+    document.getElementById('apiKey').placeholder = '✅ 服务器已提供';
+    document.getElementById('apiKeyToggle').style.display = 'none';
+  } else {
+    document.getElementById('apiEndpoint').value = s.endpoint || 'https://api.deepseek.com/v1/chat/completions';
+    document.getElementById('apiEndpoint').disabled = false;
+    document.getElementById('apiKey').value = s.apiKey || '';
+    document.getElementById('apiKey').disabled = false;
+    document.getElementById('apiKeyToggle').style.display = '';
+  }
   document.getElementById('apiModel').value = s.model || 'deepseek-v4-pro';
   document.getElementById('apiTemperature').value = s.temperature || '0.7';
 }
 
 function saveSettings() {
+  if (IS_SERVER_MODE) { showToast('✅ 服务器模式 — 无需手动设置'); return; }
   const settings = {
     endpoint: document.getElementById('apiEndpoint').value.trim(),
     apiKey: document.getElementById('apiKey').value.trim(),
@@ -1321,7 +1339,7 @@ function saveSettings() {
 function getSettings() {
   const s = JSON.parse(localStorage.getItem('proposalGenSettings') || '{}');
   return {
-    endpoint: s.endpoint || 'https://api.deepseek.com/v1/chat/completions',
+    endpoint: IS_SERVER_MODE ? SERVER_ENDPOINT : (s.endpoint || 'https://api.deepseek.com/v1/chat/completions'),
     apiKey: s.apiKey || '',
     model: s.model || 'deepseek-v4-pro',
     temperature: parseFloat(s.temperature || '0.7')
@@ -1355,6 +1373,7 @@ function toggleApiKeyVisibility() {
 }
 
 async function testConnection() {
+  if (IS_SERVER_MODE) { showToast('✅ 服务器模式 — 无需手动测试'); return; }
   // 直接从输入框读取（而非 localStorage），因为用户可能还没点保存
   const key = document.getElementById('apiKey').value.trim();
   const endpoint = document.getElementById('apiEndpoint').value.trim();
@@ -1751,19 +1770,18 @@ async function generate() {
   outputArea.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>生成中，请稍候…</p></div>';
 
   const settings = getSettings();
-  if (!settings.apiKey) {
+  if (!IS_SERVER_MODE && !settings.apiKey) {
     showError('请先在 ⚙ 设置中填入 API Key');
     resetGenerateButton(btn, hint, statusBar);
     return;
   }
 
   try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (!IS_SERVER_MODE) headers['Authorization'] = 'Bearer ' + settings.apiKey;
     const resp = await fetch(settings.endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + settings.apiKey
-      },
+      headers: headers,
       body: JSON.stringify({
         model: settings.model,
         messages: [
@@ -1978,7 +1996,7 @@ async function refineWithAI() {
   }
 
   const settings = getSettings();
-  if (!settings.apiKey) {
+  if (!IS_SERVER_MODE && !settings.apiKey) {
     alert('请先设置 API Key');
     return;
   }
@@ -2012,12 +2030,11 @@ async function refineWithAI() {
 4. 如果指令要求删除或替换内容，请彻底执行
 5. 不要添加任何解释性文字（如"好的，我修改了..."），直接输出修改后的完整方案`;
 
+    const headers = { 'Content-Type': 'application/json' };
+    if (!IS_SERVER_MODE) headers['Authorization'] = `Bearer ${settings.apiKey}`;
     const resp = await fetch(settings.endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${settings.apiKey}`
-      },
+      headers: headers,
       body: JSON.stringify({
         model: settings.model,
         messages: [
@@ -2113,8 +2130,16 @@ async function checkProxyConnection() {
   const banner = document.getElementById('connBanner');
   const icon = document.getElementById('connIcon');
   const msg = document.getElementById('connMsg');
-  const settings = getSettings();
 
+  // Server mode: skip check, show green banner
+  if (IS_SERVER_MODE) {
+    banner.className = 'conn-banner ok visible';
+    icon.textContent = '✅';
+    msg.innerHTML = '服务器模式 — API Key 由 nginx 反向代理注入，直接可用。';
+    return;
+  }
+
+  const settings = getSettings();
   const isLocalProxy = settings.endpoint.includes('localhost') || settings.endpoint.includes('127.0.0.1');
 
   if (isLocalProxy) {
