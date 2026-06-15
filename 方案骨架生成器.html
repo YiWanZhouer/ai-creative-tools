@@ -1,5 +1,5 @@
 <!-- ═══════════════════════════════════
-  方案骨架生成器 · v1.3
+  方案骨架生成器 · v1.4
   变更: feat: server mode support (IS_SERVER_MODE flag, /api/* proxy endpoint). No API Key needed when served via nginx. Backward compatible with file://.
   日期: 2026-06-12
   ═══════════════════════════════════ -->
@@ -8,6 +8,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive">
 <title>方案骨架生成器</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -667,7 +668,7 @@
 	  <button class="btn btn--ai" id="btnBrainstorm" onclick="aiBrainstorm()" title="AI 创意脑暴">🧠 脑暴</button>
 	  <button class="btn btn--ai" id="btnDiagnose" onclick="aiDiagnose()" title="AI 诊断审阅">🔍 诊断</button>
 	  <button class="btn btn--ai" id="btnBusiness" onclick="aiBusiness()" title="AI 商业分析">💼 商业</button>
-		  <span class="topbar__version">v1.3</span>
+		  <span class="topbar__version">v1.4</span>
 </div>
 
 
@@ -1431,15 +1432,18 @@ const state = {
 	// ═══════════════════════════════════
 	// SERVER MODE DETECTION
 	// ═══════════════════════════════════
-	const IS_SERVER_MODE = window.location.protocol !== 'file:';
+	// http/https = 真实服务器 → 相对路径。file = 本地双击。其他(app://等,Obsidian) → 走本地CORS代理
+	const IS_SERVER_MODE = window.location.protocol === 'http:' || window.location.protocol === 'https:';
+	const IS_OBSIDIAN = !IS_SERVER_MODE && window.location.protocol !== 'file:';
 	const SERVER_ENDPOINT = '/api/v1/chat/completions';
 	const DIRECT_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions';
+	const PROXY_ENDPOINT = 'http://localhost:8010/v1/chat/completions';
 
 	const apiConfig = {
   apiKey: localStorage.getItem('ds_api_key') || '',
   model: localStorage.getItem('ds_model') || 'deepseek-v4-pro',
 	  temperature: 0.8,
-	  endpoint: IS_SERVER_MODE ? SERVER_ENDPOINT : DIRECT_ENDPOINT
+	  endpoint: IS_SERVER_MODE ? SERVER_ENDPOINT : (IS_OBSIDIAN ? PROXY_ENDPOINT : DIRECT_ENDPOINT)
 	};
 // ═══════════════════════════════════
 // ELEMENT LOOKUP

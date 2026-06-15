@@ -1,5 +1,5 @@
 <!-- ═══════════════════════════════════
-  创意方案生成器 · v2.3
+  创意方案生成器 · v2.4
   变更: style: 设置弹窗 UI 对齐方案骨架生成器（modal-overlay 体系、统一字段样式、状态栏、服务器模式指示）；新增 btn--primary / btn--ghost 按钮体系
   日期: 2026-06-12
   ═══════════════════════════════════ -->
@@ -8,6 +8,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive">
 <title>创意方案生成器 · 四维设计矩阵</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Noto+Serif+SC:wght@400;600;700&display=swap');
@@ -597,7 +598,7 @@
 <!-- Hero -->
 <header class="hero">
   <div class="hero-content">
-    <div class="badge">四维设计矩阵 · v2.3 · DeepSeek V4 Pro</div>
+    <div class="badge">四维设计矩阵 · v2.4 · DeepSeek V4 Pro</div>
     <h1>创意方案生成器</h1>
     <p class="subtitle">四维设计矩阵 ➔ 输入层 ➔ 三个颗粒度输出</p>
   </div>
@@ -1322,8 +1323,11 @@ function checkDimWarnings() {
 }
 
 // ==================== SERVER MODE DETECTION ====================
-const IS_SERVER_MODE = window.location.protocol !== 'file:';
+// http/https = 真实服务器 → 相对路径。file = 本地双击。其他(app://等,Obsidian) → 走本地CORS代理
+const IS_SERVER_MODE = window.location.protocol === 'http:' || window.location.protocol === 'https:';
+const IS_OBSIDIAN = !IS_SERVER_MODE && window.location.protocol !== 'file:';
 const SERVER_ENDPOINT = '/api/v1/chat/completions';
+const PROXY_ENDPOINT = 'http://localhost:8010/v1/chat/completions';
 
 // ==================== SETTINGS ====================
 function loadSettings() {
@@ -1344,7 +1348,7 @@ function loadSettings() {
     const testBtn = document.getElementById('btnTestConn');
     if (testBtn) testBtn.style.display = 'none';
   } else {
-    document.getElementById('apiEndpoint').value = s.endpoint || 'https://api.deepseek.com/v1/chat/completions';
+    document.getElementById('apiEndpoint').value = s.endpoint || (IS_OBSIDIAN ? PROXY_ENDPOINT : 'https://api.deepseek.com/v1/chat/completions');
     document.getElementById('apiEndpoint').disabled = false;
     input.value = s.apiKey || '';
     input.disabled = false;
@@ -1384,7 +1388,7 @@ function saveSettings() {
 function getSettings() {
   const s = JSON.parse(localStorage.getItem('proposalGenSettings') || '{}');
   return {
-    endpoint: IS_SERVER_MODE ? SERVER_ENDPOINT : (s.endpoint || 'https://api.deepseek.com/v1/chat/completions'),
+    endpoint: IS_SERVER_MODE ? SERVER_ENDPOINT : (s.endpoint || (IS_OBSIDIAN ? PROXY_ENDPOINT : 'https://api.deepseek.com/v1/chat/completions')),
     apiKey: s.apiKey || '',
     model: s.model || 'deepseek-v4-pro',
     temperature: parseFloat(s.temperature || '0.7')
