@@ -1,6 +1,7 @@
 # Ignore everything except HTML and change records
 *
 !*.html
+!*.js
 !README.md
 !CLAUDE.md
 !.gitignore

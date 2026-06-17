@@ -8,6 +8,7 @@ AI 创意工具箱的开发规范。修改本仓库任何文件前，**必须先
 !好枫/AI工作流/
 ├── README.md           ← 工具介绍（面向 GitHub 访问者）
 ├── CLAUDE.md           ← 本文件（开发规范）
+├── shared.js            ← 公共代码（API调用/设置/Toast/Markdown渲染）
 ├── 方案骨架生成器.html   ← 主工具
 ├── 创意方案生成器.html   ← 辅助工具
 ├── index.html           ← 工具索引/分流页
@@ -108,6 +109,7 @@ git merge dev --no-edit
 ```
 *                    ← 忽略一切
 !*.html              ← 允许所有 .html
+!*.js                ← 允许所有 .js（shared.js 公共代码）
 !README.md
 !CLAUDE.md
 !.gitignore
