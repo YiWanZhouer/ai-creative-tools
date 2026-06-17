@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  ai-tools:
+    build: .
+    container_name: ai-creative-tools
+    volumes:
+      - /volume1/web/ai-tools-html:/usr/share/nginx/html:ro
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+    restart: unless-stopped
+    networks:
+      - ai-net
+
+  cloudflare-tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: cf-tunnel
+    command: tunnel --no-autoupdate --url http://ai-creative-tools:80
+    restart: unless-stopped
+    networks:
+      - ai-net
+
+networks:
+  ai-net:
+    driver: bridge

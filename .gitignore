@@ -6,3 +6,6 @@
 !.gitignore
 !变更记录/
 !变更记录/*.md
+!deploy.sh
+!deploy/
+!deploy/**

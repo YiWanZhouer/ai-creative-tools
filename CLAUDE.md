@@ -111,6 +111,9 @@ git merge dev --no-edit
 !README.md
 !CLAUDE.md
 !.gitignore
+!deploy.sh
+!deploy/
+!deploy/**           ← Docker + nginx 配置
 !变更记录/
 !变更记录/*.md
 ```
@@ -119,8 +122,17 @@ git merge dev --no-edit
 
 ## 🐳 NAS 部署
 
-`deploy.sh` 将 HTML 文件拷贝到 NAS SMB 挂载点，由 Docker + nginx 提供服务，通过 Cloudflare Tunnel 暴露公网。
+`deploy.sh` 将 HTML 文件推送到 NAS，由 Docker + nginx 提供服务，通过 Cloudflare Tunnel 暴露公网。
 
-- SMB 路径：`smb://hfmedia@192.168.1.76/web`
-- 挂载后自动检测 `/Volumes/*/ai-tools-html`
+**推送方式（优先级）**：
+1. **SSH 管道直传**（推荐）→ `ssh hfmedia@192.168.1.76` 免密登录，cat 管道写入
+2. **SMB 挂载拷贝**（回退）→ 自动检测 `/Volumes/*/ai-tools-html`
+
+**NAS 连接信息**：
+- 主机：`192.168.1.76`（LAN）/ `hfmedia.synology.me`（DDNS）
+- 用户：`hfmedia`
+- 路径：`/volume1/web/ai-tools-html/`
+- SSH 密钥已配置（`~/.ssh/id_ed25519`）
 - 详见 `deploy/` 目录
+
+> ⚠️ 远程 SSH 暂不可用（路由端口 22 被占）。需远程部署时配置 Tailscale 或端口转发。

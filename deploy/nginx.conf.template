@@ -1,0 +1,40 @@
+server {
+    listen 80;
+    server_name _;
+
+    # ── Static HTML files ──
+    # Disable caching so you can edit files on NAS and see changes immediately
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+        add_header X-Robots-Tag "noindex, nofollow, noarchive, nosnippet";
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate";
+        add_header Pragma "no-cache";
+        expires 0;
+    }
+
+    # ── DeepSeek API reverse proxy ──
+    # Browser calls /api/v1/chat/completions → nginx forwards to api.deepseek.com
+    # nginx injects the API Key server-side → browser never sees it
+    location /api/ {
+        proxy_pass https://api.deepseek.com/;
+        proxy_set_header Host api.deepseek.com;
+        proxy_set_header Authorization "Bearer ${DEEPSEEK_API_KEY}";
+        proxy_set_header Content-Type "application/json";
+
+        # Forward client IP (optional, for DeepSeek rate limiting visibility)
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        # TLS
+        proxy_ssl_server_name on;
+
+        # Timeouts — AI responses can be slow
+        proxy_read_timeout 120s;
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 30s;
+
+        # Buffering off for streaming (future-proof for SSE)
+        proxy_buffering off;
+    }
+}
