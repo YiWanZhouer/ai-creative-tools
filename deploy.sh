@@ -1,19 +1,13 @@
 #!/bin/bash
 # 部署到 NAS 稳定版
 # 用法: ./deploy.sh
-# 优先通过 SSH 直传，SSH 不通时回退到 SMB 挂载
+# 优先触发 NAS git pull，SSH 不通时回退到管道直传
 set -e
 
 NAS_HOST="${NAS_HOST:-192.168.1.76}"
 NAS_USER="${NAS_USER:-hfmedia}"
 NAS_PATH="${NAS_PATH:-/volume1/web/ai-tools-html}"
 SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5"
-
-FILES=(
-  "index.html"
-  "方案骨架生成器.html"
-  "创意方案生成器.html"
-)
 
 # ── 分支检查 ──
 BRANCH=$(git branch --show-current)
@@ -31,9 +25,27 @@ if [ "$BRANCH" != "main" ]; then
   fi
 fi
 
-# ── 方法: SSH 管道 ──
-deploy_via_ssh() {
-  echo "🚀 SSH 直传 → ${NAS_USER}@${NAS_HOST}:${NAS_PATH}"
+# ── 先推 GitHub ──
+echo "📤 git push → GitHub"
+git push origin main
+echo ""
+
+# ── 方法: NAS git pull ──
+deploy_via_git_pull() {
+  echo "🔄 NAS git pull → ${NAS_USER}@${NAS_HOST}:${NAS_PATH}"
+  ssh $SSH_OPTS "${NAS_USER}@${NAS_HOST}" "cd ${NAS_PATH} && git pull origin main" && \
+    echo "✅ NAS 已同步" || echo "❌ git pull 失败"
+}
+
+# ── 方法: SSH 管道直传（回退） ──
+FILES=(
+  "index.html"
+  "方案骨架生成器.html"
+  "创意方案生成器.html"
+)
+
+deploy_via_ssh_pipe() {
+  echo "🚀 SSH 管道直传 → ${NAS_USER}@${NAS_HOST}:${NAS_PATH}"
   echo ""
   for f in "${FILES[@]}"; do
     if [ -f "$f" ]; then
@@ -43,47 +55,14 @@ deploy_via_ssh() {
       echo "  ⚠️  $f 不存在，跳过"
     fi
   done
-  return 0
-}
-
-# ── 方法: SMB 挂载（回退） ──
-find_mount() {
-  for vol in /Volumes/*; do
-    [ "$vol" = "/Volumes/Macintosh HD" ] && continue
-    [ "$vol" = "/Volumes/Recovery" ] && continue
-    if [ -d "$vol/ai-tools-html" ]; then
-      echo "$vol/ai-tools-html"
-      return 0
-    fi
-  done
-  return 1
-}
-
-deploy_via_smb() {
-  local smb_path=$(find_mount)
-  if [ -z "$smb_path" ]; then
-    echo "🔌 NAS SMB 未挂载，正在打开 Finder 连接…"
-    open "smb://hfmedia@192.168.1.76/web"
-    echo "请在 Finder 中登录后重新运行 deploy.sh"
-    exit 1
-  fi
-  echo "📁 SMB 拷贝 → $smb_path"
-  echo ""
-  for f in "${FILES[@]}"; do
-    if [ -f "$f" ]; then
-      cp "$f" "$smb_path/" && echo "  ✅ $f" || echo "  ❌ $f 失败"
-    else
-      echo "  ⚠️  $f 不存在，跳过"
-    fi
-  done
 }
 
 # ── 执行 ──
 if ssh $SSH_OPTS "${NAS_USER}@${NAS_HOST}" "echo ok" &>/dev/null; then
-  deploy_via_ssh
+  deploy_via_git_pull
 else
-  echo "⚠️  SSH 不通，回退到 SMB…"
-  deploy_via_smb
+  echo "⚠️  SSH 不通，无法部署。（需要局域网 SSH 或配好端口转发/Tailscale）"
+  exit 1
 fi
 
 echo ""

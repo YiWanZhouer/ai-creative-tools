@@ -122,17 +122,18 @@ git merge dev --no-edit
 
 ## 🐳 NAS 部署
 
-`deploy.sh` 将 HTML 文件推送到 NAS，由 Docker + nginx 提供服务，通过 Cloudflare Tunnel 暴露公网。
+`deploy.sh` 执行流程：
+1. `git push origin main` → GitHub
+2. `ssh nas "cd /volume1/web/ai-tools-html && git pull"` → NAS 从 GitHub 拉取
 
-**推送方式（优先级）**：
-1. **SSH 管道直传**（推荐）→ `ssh hfmedia@192.168.1.76` 免密登录，cat 管道写入
-2. **SMB 挂载拷贝**（回退）→ 自动检测 `/Volumes/*/ai-tools-html`
+NAS 目录是 `--depth 1` 浅克隆，Docker + nginx 通过 Cloudflare Tunnel 暴露公网。
 
 **NAS 连接信息**：
-- 主机：`192.168.1.76`（LAN）/ `hfmedia.synology.me`（DDNS）
+- 主机：`192.168.1.76`（LAN）
 - 用户：`hfmedia`
 - 路径：`/volume1/web/ai-tools-html/`
+- Git 已安装（2.39.1）
 - SSH 密钥已配置（`~/.ssh/id_ed25519`）
 - 详见 `deploy/` 目录
 
-> ⚠️ 远程 SSH 暂不可用（路由端口 22 被占）。需远程部署时配置 Tailscale 或端口转发。
+> ⚠️ 远程 SSH 暂不可用（路由端口 22 被占）。部署需要局域网。远程可用方案：Tailscale 或路由器转发端口 2222→NAS:22。
