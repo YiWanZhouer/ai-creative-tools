@@ -1,7 +1,7 @@
 <!-- ═══════════════════════════════════
-  方案骨架生成器 · v1.4
-  变更: feat: server mode support (IS_SERVER_MODE flag, /api/* proxy endpoint). No API Key needed when served via nginx. Backward compatible with file://.
-  日期: 2026-06-12
+  方案骨架生成器 · v1.5
+  变更: fix: increase API timeout 30s→120s (DeepSeek V4 Pro + 4096 tokens needs headroom)
+  日期: 2026-06-17
   ═══════════════════════════════════ -->
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -668,7 +668,7 @@
 	  <button class="btn btn--ai" id="btnBrainstorm" onclick="aiBrainstorm()" title="AI 创意脑暴">🧠 脑暴</button>
 	  <button class="btn btn--ai" id="btnDiagnose" onclick="aiDiagnose()" title="AI 诊断审阅">🔍 诊断</button>
 	  <button class="btn btn--ai" id="btnBusiness" onclick="aiBusiness()" title="AI 商业分析">💼 商业</button>
-		  <span class="topbar__version">v1.4</span>
+		  <span class="topbar__version">v1.5</span>
 </div>
 
 
@@ -2397,9 +2397,9 @@ async function callDeepSeek(a, b, c) {
     temperature = (c !== undefined) ? c : 0.8;
   }
 
-  // 30s timeout — mobile networks can hang silently without AbortController
+  // 120s timeout — DeepSeek V4 Pro + 4096 max_tokens needs headroom
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(() => controller.abort(), 120000);
 
   let response;
   try {
@@ -2437,7 +2437,7 @@ function formatError(type) {
     case 'CORS':
       return '⚠️ 浏览器安全策略阻止了直接调用 DeepSeek API。<br>手机端常见原因：iOS Safari 对跨域请求限制更严格。<br>解决方法：① 使用桌面端 Chrome + CORS 插件 ② 或通过本地代理转发请求。';
     case 'Timeout':
-      return '⏰ API 请求超时（30 秒无响应）。<br>可能原因：① 手机网络不稳定 ② DeepSeek 服务端排队。<br>建议：切换 Wi-Fi 或稍后重试。';
+      return '⏰ API 请求超时（120 秒无响应）。<br>可能原因：① DeepSeek 服务端高负载排队 ② 网络不稳定。<br>建议：稍后重试，或切换 Wi-Fi。';
     case 'KeyInvalid':
       return '🔑 API Key 无效（401）。请检查 Key 是否正确，或前往 <a href="https://platform.deepseek.com/api_keys" target="_blank">DeepSeek 开放平台</a> 重新获取。';
     case 'RateLimit':
