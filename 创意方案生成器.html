@@ -1248,7 +1248,7 @@ function renderDimensions() {
     </div>`
   ).join('');
 
-  updateGenerateButton();
+  if (typeof updateGenerateButton === 'function') if (typeof updateGenerateButton === 'function') updateGenerateButton();
 
   // Check for dimension-level warnings
   checkDimWarnings();
@@ -1826,6 +1826,7 @@ async function generate() {
 
   } catch (e) {
     showError(formatError(e.message));
+  }
 
   resetGenerateButton(btn, hint, statusBar);
 }
