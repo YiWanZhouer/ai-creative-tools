@@ -11,7 +11,7 @@
 <meta name="robots" content="noindex, nofollow, noarchive">
 <title>创意方案生成器 · 四维设计矩阵</title>
 <style>
-    /* Google Fonts removed — blocked in China, using system fonts */
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Noto+Serif+SC:wght@400;600;700&display=swap');
 
   :root {
     --bg: #faf8f3;
@@ -43,7 +43,7 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    font-family: -apple-system, sans-serif;
+    font-family: 'Noto Sans SC', -apple-system, sans-serif;
     background: var(--bg); color: var(--text);
     line-height: 1.7; font-size: 15px; -webkit-font-smoothing: antialiased;
     padding-bottom: 80px;
@@ -1399,30 +1399,73 @@ function getSettings() {
 }
 
 function toggleSettings() {
-  openSettings();
+  const modal = document.getElementById('settingsModal');
+  if (modal.classList.contains('modal-overlay--visible')) {
+    closeSettings();
+  } else {
+    loadSettings();
+    modal.classList.add('modal-overlay--visible');
+    setTimeout(() => document.getElementById('apiKeyInput')?.focus(), 100);
+  }
 }
 
 function closeSettings() {
   document.getElementById('settingsModal').classList.remove('modal-overlay--visible');
 }
 
+// toggleKeyVisibility → shared.js
 
 function clearSettings() {
-  apiConfig.apiKey = '';
-  apiConfig.model = 'deepseek-v4-pro';
-  localStorage.removeItem('proposalGenSettings');
-  localStorage.removeItem('ds_api_key');
-  localStorage.removeItem('ds_model');
+  document.getElementById('apiEndpoint').value = 'https://api.deepseek.com/v1/chat/completions';
   document.getElementById('apiKeyInput').value = '';
+  document.getElementById('modelSelect').value = 'deepseek-v4-pro';
+  document.getElementById('apiTemperature').value = '0.7';
+  localStorage.removeItem('proposalGenSettings');
   document.getElementById('apiKeyStatus').textContent = '请填入 DeepSeek API Key';
   document.getElementById('apiKeyStatus').className = 'modal__status modal__status--warn';
-  document.getElementById('results').innerHTML = '';
   showToast('🗑️ 设置已清除');
 }
 
+async function testConnection() {
+  if (IS_SERVER_MODE) { showToast('✅ 服务器模式 — 无需手动测试'); return; }
+  const key = document.getElementById('apiKeyInput').value.trim();
+  const endpoint = document.getElementById('apiEndpoint').value.trim();
+  const model = document.getElementById('modelSelect').value;
+  if (!key) { showToast('⚠️ 请先输入 API Key'); return; }
+  if (!key.startsWith('sk-')) { showToast('⚠️ Key 格式不对'); return; }
 
-// ShowToast / ToggleKeyVisibility / TestConnection → shared.js
-// Settings → page-specific (uses proposalGenSettings JSON)
+  const btn = document.getElementById('btnTestConn');
+  btn.textContent = '⏳ 测试中…';
+  btn.disabled = true;
+  try {
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: 'user', content: '回复"连接成功"两个字' }],
+        max_tokens: 50
+      })
+    });
+    if (resp.ok) {
+      saveSettings(); // 测试通过自动保存
+      const data = await resp.json();
+      showToast('✅ 连接成功: ' + (data.choices?.[0]?.message?.content || 'OK'));
+    } else {
+      const err = await resp.text();
+      showToast('❌ 连接失败: ' + resp.status + ' ' + err.slice(0, 100));
+    }
+  } catch (e) {
+    showToast('❌ 网络错误: ' + e.message);
+  }
+  btn.textContent = '🔗 测试连接';
+  btn.disabled = false;
+}
+
+// showToast → shared.js
 
 // ==================== GRANULARITY ====================
 function selectGranularity(level, el) {
@@ -1782,8 +1825,7 @@ async function generate() {
     setTimeout(() => { statusBar.classList.remove('visible'); }, 2500);
 
   } catch (e) {
-    showError(e.message);
-  }
+    showError(formatError(e.message));
 
   resetGenerateButton(btn, hint, statusBar);
 }
@@ -1967,13 +2009,192 @@ async function refineWithAI() {
     return;
   }
 
-  if (!IS_SERVER_MODE && !apiConfig.apiKey) {
-    showError('请先在 ⚙ 设置中填入 API Key');
-    resetButton(btn, statusBar, statusDot, statusText);
+  const settings = getSettings();
+  if (!IS_SERVER_MODE && !settings.apiKey) {
+    alert('请先设置 API Key');
     return;
   }
 
+  const currentContent = document.getElementById('editTextarea').value.trim();
+  if (!currentContent) {
+    alert('编辑内容为空');
+    return;
+  }
+
+  const btn = document.getElementById('btnRefine');
+  btn.disabled = true;
+  btn.textContent = '⏳ AI 修改中...';
+
+  const statusBar = document.getElementById('statusBar');
+  const statusText = document.getElementById('statusText');
+  const statusDot = document.getElementById('statusDot');
+  statusBar.classList.add('visible');
+  statusDot.className = 'status-dot generating';
+  statusText.textContent = 'AI 正在根据你的指令修改方案…';
+
   try {
-    const temp = parseFloat(document.getElementById('apiTemperature')?.value || '0.7');
-    const content = await callDeepSeek(buildSystemPrompt(currentGranularity), `请润色以下内容：\n\n${currentContent}`, temp);
-    if (!content) throw new Error('API 返回了空内容');
+    const systemPrompt = `你是一位资深创意策划人。用户提供了一份已经生成的创意方案，并要求你进行修改。
+
+修改要求：${instruction}
+
+规则：
+1. 保持原有的输出格式（Markdown 标题、表格、引用块等）
+2. 只修改与指令相关的部分，其他内容保持不变
+3. 如果指令要求增加内容，请融入现有结构中
+4. 如果指令要求删除或替换内容，请彻底执行
+5. 不要添加任何解释性文字（如"好的，我修改了..."），直接输出修改后的完整方案`;
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (!IS_SERVER_MODE) headers['Authorization'] = `Bearer ${settings.apiKey}`;
+    const resp = await fetch(settings.endpoint, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({
+        model: settings.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: '以下是需要修改的方案原文：\n\n' + currentContent }
+        ],
+        temperature: settings.temperature,
+        max_tokens: 4096
+      })
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(`API 返回 ${resp.status}: ${errText.slice(0, 200)}`);
+    }
+
+    const data = await resp.json();
+    const newContent = data.choices?.[0]?.message?.content;
+    if (!newContent) throw new Error('API 返回了空内容');
+
+    // Update the raw content
+    const outputArea = document.getElementById('outputArea');
+    outputArea.dataset.rawContent = newContent;
+
+    // Update edit textarea
+    document.getElementById('editTextarea').value = newContent;
+
+    // Re-render
+    rerenderOutputBody(newContent);
+
+    statusDot.className = 'status-dot success';
+    statusText.textContent = '✅ 修改完成';
+    setTimeout(() => { statusBar.classList.remove('visible'); }, 2000);
+
+    showToast('✅ AI 已根据指令修改完成');
+
+  } catch (e) {
+    statusDot.className = 'status-dot error';
+    statusText.textContent = '❌ 修改失败';
+    alert('修改失败: ' + e.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🤖 让 AI 修改';
+}
+
+function applyEditAndRegenerate() {
+  const newContent = document.getElementById('editTextarea').value.trim();
+  if (!newContent) {
+    alert('编辑内容为空');
+    return;
+  }
+  document.getElementById('outputArea').dataset.rawContent = newContent;
+  rerenderOutputBody(newContent);
+  document.getElementById('editPanel').classList.remove('visible');
+  showToast('✅ 编辑已应用');
+}
+
+// Re-render just the output body when content is edited
+function rerenderOutputBody(content) {
+  const outputArea = document.getElementById('outputArea');
+  const outputBody = document.getElementById('outputBody');
+  if (outputBody) {
+    outputBody.innerHTML = renderMarkdownBody(content);
+  }
+  const editTextarea = document.getElementById('editTextarea');
+  if (editTextarea) editTextarea.value = content;
+}
+
+function renderMarkdownBody(md) {
+  // Use DOM parsing to extract body content (regex fails on nested divs)
+  const temp = document.createElement('div');
+  temp.innerHTML = renderMarkdown(md);
+  const body = temp.querySelector('.output-card-body');
+  return body ? body.innerHTML : temp.innerHTML;
+}
+
+// ==================== KEYBOARD SHORTCUT ====================
+document.addEventListener('keydown', function(e) {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    e.preventDefault();
+    if (isReady() && !isGenerating) generate();
+  }
+});
+
+// ==================== INIT ====================
+loadSettings();
+renderDimensions();
+updateGenerateButton();
+
+// ==================== PROXY CONNECTION CHECK ====================
+async function checkProxyConnection() {
+  const banner = document.getElementById('connBanner');
+  const icon = document.getElementById('connIcon');
+  const msg = document.getElementById('connMsg');
+
+  // Server mode: skip check, show green banner
+  if (IS_SERVER_MODE) {
+    banner.className = 'conn-banner ok visible';
+    icon.textContent = '✅';
+    msg.innerHTML = '服务器模式 — API Key 由 nginx 反向代理注入，直接可用。';
+    return;
+  }
+
+  const settings = getSettings();
+  const isLocalProxy = settings.endpoint.includes('localhost') || settings.endpoint.includes('127.0.0.1');
+
+  if (isLocalProxy) {
+    // Check if local proxy is running
+    try {
+      const resp = await fetch(settings.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'test', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 }),
+        signal: AbortSignal.timeout(3000)
+      });
+      banner.className = 'conn-banner ok visible';
+      icon.textContent = '✅';
+      msg.innerHTML = '本地代理已连接 — 可以正常使用。';
+    } catch (e) {
+      banner.className = 'conn-banner warn visible';
+      icon.textContent = '⚠️';
+      msg.innerHTML = '本地代理未启动。请运行 <code>node proxy.js</code> 或切换到直连模式（改 endpoint 为 <code>https://api.deepseek.com/v1/chat/completions</code>）。';
+    }
+  } else {
+    // Direct connection — try a lightweight ping
+    try {
+      const resp = await fetch(settings.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer test' },
+        body: JSON.stringify({ model: settings.model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 }),
+        signal: AbortSignal.timeout(5000)
+      });
+      // Any response means connection works (even 401 auth error is fine)
+      banner.className = 'conn-banner ok visible';
+      icon.textContent = '✅';
+      msg.innerHTML = 'API 直连正常。在 ⚙ 设置中填入你的 API Key 即可使用。';
+    } catch (e) {
+      // CORS or network error
+      banner.className = 'conn-banner warn visible';
+      icon.textContent = '⚠️';
+      msg.innerHTML = '直连被拦截（CORS）。解决方法：① 安装浏览器 CORS 插件，或 ② 运行 <code>node proxy.js</code> 后把 endpoint 改为 <code>http://localhost:8010/v1/chat/completions</code>。<br>如已填入 API Key 且使用 Obsidian 内置浏览器打开，通常可直连。';
+    }
+  }
+}
+</script>
+
+</body>
+</html>
