@@ -1,7 +1,7 @@
 <!-- ═══════════════════════════════════
-  方案骨架生成器 · v1.4
-  变更: feat: server mode support (IS_SERVER_MODE flag, /api/* proxy endpoint). No API Key needed when served via nginx. Backward compatible with file://.
-  日期: 2026-06-12
+  方案骨架生成器 · v1.13
+  变更: 信号/韩综卡片点击自动填充对应元素
+  日期: 2026-06-19
   ═══════════════════════════════════ -->
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -310,6 +310,119 @@
     transition: opacity 200ms ease;
   }
   .toast--show { opacity: 1; }
+
+  /* ── Layer dividers ── */
+  .layer-divider {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: 10px;
+    margin: 8px 0 4px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .layer-divider:first-child { margin-top: 0; }
+  .layer-badge {
+    font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em;
+    padding: 3px 10px; border-radius: 100px;
+    background: var(--accent-dim); color: var(--accent);
+  }
+  .layer-desc {
+    font-size: 0.8125rem; color: var(--text-muted);
+  }
+
+  /* ── Card locked state ── */
+  .card--locked { opacity: 0.45; }
+  .card--locked .chip { pointer-events: none; }
+  /* ── Signal Panel ── */
+  .signal-panel {
+    max-width: 1440px; margin: 0 auto 16px; padding: 0 24px;
+  }
+  .signal-panel__header {
+    font-size: 0.8125rem; font-weight: 600; color: var(--text);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px; background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  }
+  .signal-panel__genre-tag {
+    font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em;
+    padding: 2px 8px; border-radius: 100px;
+    background: var(--accent-dim); color: var(--accent);
+    margin-left: auto;
+  }
+  .signal-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px; padding: 12px 16px; background: var(--card);
+    border: 1px solid var(--border); border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  }
+  .signal-card {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px;
+  }
+  .signal-card__channel {
+    font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em;
+    color: var(--dominant);
+  }
+  .signal-card__topic {
+    font-size: 0.9375rem; font-weight: 700; color: var(--text); margin: 4px 0;
+  }
+  .signal-card__source {
+    font-size: 0.75rem; color: var(--text-muted);
+  }
+  .signal-card__angle {
+    font-size: 0.8125rem; color: var(--selected);
+    margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border);
+  }
+
+  /* ── Signal toggle button ── */
+  .btn--signal {
+    font-size: 0.75rem; padding: 4px 10px; margin-left: 8px;
+  }
+  /* ── Anti-Pattern Cases ── */
+  .anti-case {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 16px; margin-bottom: 12px;
+  }
+  .anti-case__header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  }
+  .anti-case__badge {
+    font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em;
+    padding: 2px 8px; border-radius: 100px;
+    background: var(--dominant-dim); color: var(--dominant);
+    white-space: nowrap;
+  }
+  .anti-case__name { font-size: 0.9375rem; font-weight: 700; }
+  .anti-case__rule {
+    font-size: 0.875rem; color: var(--text-muted); margin-bottom: 8px;
+    padding-left: 16px; border-left: 2px solid var(--accent);
+  }
+  .anti-case__conditions { font-size: 0.8125rem; color: var(--text); margin-bottom: 6px; }
+  .anti-case__conditions li { margin-bottom: 3px; }
+  .anti-case__attribution {
+    font-size: 0.875rem; color: var(--text); font-weight: 500;
+    background: var(--accent-dim); padding: 8px 12px; border-radius: 6px;
+    margin: 8px 0;
+  }
+  .anti-case__reusable {
+    font-size: 0.8125rem; color: var(--selected); margin-top: 6px;
+  }
+  .anti-case__not-reusable {
+    font-size: 0.8125rem; color: var(--auxiliary); margin-top: 2px;
+  }
+
+  /* ── Suggested chip highlight ── */
+  .chip--suggested {
+    border: 1.5px dashed var(--accent);
+    background: var(--accent-dim);
+  }
+
+  /* ── Backtrack banner ── */
+  #backtrackBanner {
+    display: none;
+    text-align: center; padding: 10px;
+    background: #fef3c7; color: #92400e; font-size: 0.8125rem;
+    border-bottom: 1px solid #fcd34d;
+  }
+  #backtrackBanner.show { display: block; }
 
   /* ── New: Pitch, Journey, Highlights ── */
   .output__pitch {
@@ -635,26 +748,68 @@
 
 <!-- ═══════════ TOP BAR ═══════════ -->
 <div class="topbar">
-  <div class="logo">🎬 方案<span>骨架</span>生成器</div>
-  <button class="btn btn--primary" onclick="generate()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-    生成方案
-  </button>
-  <button class="btn" onclick="randomize()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 4l3 3-3 3M18 20l3-3-3-3M3 7h12M3 17h12"/></svg>
-    随机生成
-  </button>
-  <button class="btn btn--ghost" onclick="clearAll()">清空</button>
-  <select class="btn" id="presetSelect" onchange="applyPreset(this.value); this.value='';">
-    <option value="">📋 预设方案 ▾</option>
-    <option value="chuang101">创造101</option>
-    <option value="zhongdi">种地吧</option>
-    <option value="chenglang">乘风破浪的姐姐</option>
-    <option value="xiangwang">向往的生活</option>
-    <option value="xiyouji">新西游记</option>
-    <option value="runningman">Running Man</option>
-    <option value="renshi">认识的哥哥</option>
-  </select>
+  <div class="logo">🎬 方案骨架生成器</div>
+
+  <div class="topbar__group">
+    <button class="btn btn--primary" onclick="generate()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      生成方案
+    </button>
+    <button class="btn" onclick="randomize()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 4l3 3-3 3M18 20l3-3-3-3M3 7h12M3 17h12"/></svg>
+      随机生成
+    </button>
+    <button class="btn btn--ghost" onclick="clearAll()">清空</button>
+  </div>
+
+  <span class="topbar__sep">|</span>
+
+  <div class="topbar__group">
+    <select class="btn" id="presetSelect" onchange="applyPreset(this.value); this.value='';">
+      <option value="">📋 预设方案 ▾</option>
+      <option value="chuang101">创造101</option>
+      <option value="zhongdi">种地吧</option>
+      <option value="chenglang">乘风破浪的姐姐</option>
+      <option value="xiangwang">向往的生活</option>
+      <option value="xiyouji">新西游记</option>
+      <option value="runningman">Running Man</option>
+      <option value="renshi">认识的哥哥</option>
+    </select>
+    <select class="btn" id="genreSelect" onchange="setGenre(this.value)">
+      <option value="">🎬 通用模式</option>
+      <option value="talent_show">🏆 选秀/竞技类</option>
+      <option value="dating">💕 恋综/情感类</option>
+      <option value="observation">👀 观察类</option>
+      <option value="survival">🔥 生存/挑战类</option>
+      <option value="communal">🏠 群居实验类</option>
+      <option value="travel">🚐 旅行/公路类</option>
+    </select>
+  </div>
+
+  <span class="topbar__sep">|</span>
+
+  <div class="topbar__group">
+    <button class="btn btn--ai" id="btnPolish" onclick="aiPolish()" title="AI 润色方案描述">🤖 润色</button>
+    <button class="btn btn--ai" id="btnBrainstorm" onclick="aiBrainstorm()" title="AI 创意脑暴">🧠 脑暴</button>
+    <button class="btn btn--ai" id="btnDiagnose" onclick="aiDiagnose()" title="AI 诊断审阅">🔍 诊断</button>
+    <button class="btn btn--ai" id="btnBusiness" onclick="aiBusiness()" title="AI 商业分析">💼 商业</button>
+    <select class="btn" id="deptSelect" onchange="onDeptChange(this.value)" style="font-size:0.75rem;padding:4px 8px;max-width:90px" title="决策者部门">
+      <option value="">🏢 部门</option>
+      <option value="运营部门">运营</option>
+      <option value="商业化部门">商业化</option>
+      <option value="内容部门">内容</option>
+      <option value="平台策略">策略</option>
+    </select>
+    <select class="btn" id="roleSelect" onchange="onRoleChange(this.value)" style="font-size:0.75rem;padding:4px 8px;max-width:90px" title="决策者背景">
+      <option value="">👤 角色</option>
+      <option value="财务出身">财务</option>
+      <option value="制片出身">制片</option>
+      <option value="互联网产品出身">产品</option>
+      <option value="传统媒体出身">媒体</option>
+      <option value="商人出身">商人</option>
+    </select>
+  </div>
+
   <button class="btn" onclick="copyOutput()" id="btnCopy" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
     复制
@@ -663,17 +818,32 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
     Markdown
   </button>
-	  <button class="btn btn--ghost" onclick="openSettings()" title="API 设置" style="margin-left:4px">⚙️</button>
-	  <button class="btn btn--ai" id="btnPolish" onclick="aiPolish()" title="AI 润色方案描述">🤖 润色</button>
-	  <button class="btn btn--ai" id="btnBrainstorm" onclick="aiBrainstorm()" title="AI 创意脑暴">🧠 脑暴</button>
-	  <button class="btn btn--ai" id="btnDiagnose" onclick="aiDiagnose()" title="AI 诊断审阅">🔍 诊断</button>
-	  <button class="btn btn--ai" id="btnBusiness" onclick="aiBusiness()" title="AI 商业分析">💼 商业</button>
-		  <span class="topbar__version">v1.4</span>
+  <button class="btn btn--ghost" onclick="openSettings()" title="API 设置">⚙️</button>
+  <span class="topbar__version">v1.13</span>
+</div>
+<div id="backtrackBanner"></div>
+
+<div id="signalPanel" class="signal-panel" style="display:none">
+  <div class="signal-panel__header">
+    📡 发端信号 · 当前热点 & 前置趋势
+    <span class="signal-panel__genre-tag" id="signalGenreTag"></span>
+    <button class="btn btn--ghost" onclick="toggleSignalPanel()" style="margin-left:auto;font-size:1rem;padding:2px 6px;line-height:1" title="关闭">✕</button>
+  </div>
+  <div class="signal-grid" id="signalGrid"></div>
+</div>
+
+<div id="koreanShowPanel" class="signal-panel" style="display:none">
+  <div class="signal-panel__header">
+    🇰🇷 韩综参考 · 标志性样本库
+    <span class="signal-panel__genre-tag" id="koreanGenreTag"></span>
+    <button class="btn btn--ghost" onclick="toggleKoreanShowPanel()" style="margin-left:auto;font-size:1rem;padding:2px 6px;line-height:1" title="关闭">✕</button>
+  </div>
+  <div class="signal-grid" id="koreanGrid"></div>
 </div>
 
 
-	<!-- Settings Modal -->
 	<div class="modal-overlay" id="settingsModal" onclick="closeSettings()">
+
 	  <div class="modal" onclick="event.stopPropagation()">
 	    <div class="modal__title">⚙️ API 设置</div>
 	    <div class="modal__desc">
@@ -692,7 +862,6 @@
 		      <label>模型</label>
 		      <select id="modelSelect" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.875rem;font-family:inherit;outline:none;cursor:pointer">
 		        <option value="deepseek-v4-pro">DeepSeek V4 Pro（推荐）</option>
-		        <option value="deepseek-v4-flash">DeepSeek V4 Flash（快速）</option>
 		      </select>
 		      </div>
 	    <div class="modal__actions">
@@ -735,6 +904,7 @@
 const CATEGORIES = [
   {
     id: 'narrative',
+    layer: 1,
     name: '叙事引擎',
     emoji: '🎬',
     subtitle: '「为什么好看」',
@@ -754,6 +924,7 @@ const CATEGORIES = [
   },
   {
     id: 'time',
+    layer: 1,
     name: '时间结构',
     emoji: '⏳',
     subtitle: '「节奏怎么走」',
@@ -773,6 +944,7 @@ const CATEGORIES = [
   },
   {
     id: 'space',
+    layer: 2,
     name: '空间规则',
     emoji: '📍',
     subtitle: '「人在哪里」',
@@ -791,6 +963,7 @@ const CATEGORIES = [
   },
   {
     id: 'filter',
+    layer: 2,
     name: '筛选机制',
     emoji: '🔍',
     subtitle: '「谁留下谁离开」',
@@ -809,6 +982,7 @@ const CATEGORIES = [
   },
   {
     id: 'characters',
+    layer: 2,
     name: '人物网络',
     emoji: '👥',
     subtitle: '「谁和谁什么关系」',
@@ -829,6 +1003,7 @@ const CATEGORIES = [
   },
   {
     id: 'viewing',
+    layer: 2,
     name: '观看契约',
     emoji: '👁️',
     subtitle: '「观众怎么参与」',
@@ -848,6 +1023,7 @@ const CATEGORIES = [
   },
   {
     id: 'exit',
+    layer: 3,
     name: '出口设计',
     emoji: '🚪',
     subtitle: '「最终结果是什么」',
@@ -866,6 +1042,7 @@ const CATEGORIES = [
   },
   {
     id: 'authenticity',
+    layer: 3,
     name: '真实性锚点',
     emoji: '⚓',
     subtitle: '「观众为什么相信」',
@@ -1422,7 +1599,11 @@ const state = {
   characters: new Set(),
   viewing: new Set(),
   exit: new Set(),
-  authenticity: new Set()
+  authenticity: new Set(),
+  layerUnlocked: [true, false, false],
+  activeGenre: null,
+  bizDept: null,
+  bizRole: null
 };
 
 
@@ -1455,6 +1636,28 @@ CATEGORIES.forEach(cat => {
 
   initCustomElements();
 
+  // Restore biz persona from localStorage
+  state.bizDept = localStorage.getItem('fg_biz_dept') || null;
+  state.bizRole = localStorage.getItem('fg_biz_role') || null;
+
+  // Sync topbar persona selects on load
+  setTimeout(function() {
+    var ds = document.getElementById('deptSelect');
+    var rs = document.getElementById('roleSelect');
+    if (ds) ds.value = state.bizDept || '';
+    if (rs) rs.value = state.bizRole || '';
+  }, 100);
+
+  // Persona change handlers (v1.12: moved from settings modal to topbar)
+  function onDeptChange(val) {
+    state.bizDept = val || null;
+    localStorage.setItem('fg_biz_dept', val);
+  }
+  function onRoleChange(val) {
+    state.bizRole = val || null;
+    localStorage.setItem('fg_biz_role', val);
+  }
+
 // ═══════════════════════════════════
   // ═══════════════════════════════════
   // CUSTOM ELEMENTS
@@ -1470,7 +1673,7 @@ CATEGORIES.forEach(cat => {
         window._customElements.forEach(ce => {
           const cat = CATEGORIES.find(c => c.id === ce.catId);
           if (cat) {
-            cat.elements.push({ id: ce.id, label: ce.label, desc: ce.desc || '', detail: ce.detail || '', custom: true });
+            cat.elements.push({ id: ce.id, label: ce.label, desc: ce.desc || '', detail: ce.detail || '', custom: true, layer: cat.layer });
             elementMap[ce.id] = cat.elements[cat.elements.length - 1];
           }
         });
@@ -1611,9 +1814,19 @@ function renderAll() {
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
 
+  let lastLayer = 0;
   CATEGORIES.forEach(cat => {
+    // Insert layer divider when entering a new layer
+    if (cat.layer !== lastLayer) {
+      lastLayer = cat.layer;
+      grid.appendChild(createLayerDivider(cat.layer));
+    }
+
     const card = document.createElement('div');
     card.className = 'card';
+    card.dataset.layer = cat.layer;
+    card.dataset.catId = cat.id;
+    if (cat.layer > 1) card.classList.add('card--locked');
 
     // Header
     const header = document.createElement('div');
@@ -1740,6 +1953,9 @@ function updateChipState(chip, mode, active) {
 // INTERACTIONS
 // ═══════════════════════════════════
 function toggleNarrative(elId, mode) {
+  // L1 change → protection
+  if (!handleL1Change()) return;
+
   const other = mode === 'dominant' ? 'auxiliary' : 'dominant';
 
   if (state.narrative[other].has(elId)) {
@@ -1755,9 +1971,14 @@ function toggleNarrative(elId, mode) {
 
   refreshAllChips();
   hideOutput();
+  syncLayerState();
 }
 
 function toggleElement(catId, elId) {
+  const cat = CATEGORIES.find(function(c) { return c.id === catId; });
+  if (cat && cat.layer === 1) {
+    if (!handleL1Change()) return;
+  }
   const set = state[catId];
   if (set.has(elId)) {
     set.delete(elId);
@@ -1766,6 +1987,7 @@ function toggleElement(catId, elId) {
   }
   refreshAllChips();
   hideOutput();
+  syncLayerState();
 }
 
 // ═══════════════════════════════════
@@ -1775,6 +1997,17 @@ function clearAll() {
   state.narrative.dominant.clear();
   state.narrative.auxiliary.clear();
   ['time', 'space', 'filter', 'characters', 'viewing', 'exit', 'authenticity'].forEach(k => state[k].clear());
+  state.layerUnlocked = [true, false, false];
+  state.activeGenre = null;
+  document.querySelectorAll('.card[data-layer="2"], .card[data-layer="3"]').forEach(function(c) { c.classList.add('card--locked'); });
+  ['2','3'].forEach(function(n) {
+    var desc = document.querySelector('[data-layer-desc="' + n + '"]');
+    if (desc) desc.textContent = '🔒 完成 L' + (parseInt(n) - 1) + ' 后解锁';
+  });
+  var genreSelect = document.getElementById('genreSelect');
+  if (genreSelect) genreSelect.value = '';
+  resetL1Hints();
+  clearSuggested();
   refreshAllChips();
   hideOutput();
   document.getElementById('outputTitle').value = '未命名方案';
@@ -1810,13 +2043,18 @@ function randomize() {
 
   refreshAllChips();
   document.getElementById('outputTitle').value = '随机方案';
+  state.layerUnlocked = [true, true, true];
+  document.querySelectorAll('.card--locked').forEach(function(c) { c.classList.remove('card--locked'); });
+  ['2','3'].forEach(function(n) {
+    var desc = document.querySelector('[data-layer-desc="' + n + '"]');
+    if (desc) desc.textContent = n === '2' ? '在发端引擎基础上丰富方案' : '脱离时间线，回头审视整体';
+  });
   generate();
 }
 
 function applyPreset(presetKey) {
   if (!presetKey || !PRESETS[presetKey]) return;
   const p = PRESETS[presetKey];
-
   clearAll();
   p.narrative.dominant.forEach(id => state.narrative.dominant.add(id));
   p.narrative.auxiliary.forEach(id => state.narrative.auxiliary.add(id));
@@ -1830,6 +2068,12 @@ function applyPreset(presetKey) {
 
   refreshAllChips();
   document.getElementById('outputTitle').value = p.name;
+  state.layerUnlocked = [true, true, true];
+  document.querySelectorAll('.card--locked').forEach(function(c) { c.classList.remove('card--locked'); });
+  ['2','3'].forEach(function(n) {
+    var desc = document.querySelector('[data-layer-desc="' + n + '"]');
+    if (desc) desc.textContent = n === '2' ? '在发端引擎基础上丰富方案' : '脱离时间线，回头审视整体';
+  });
   generate();
 }
 
@@ -1884,6 +2128,13 @@ function generate() {
   // ── Causal Chains: 因果推导 ──
   html += '<h3>🧠 因果推导链</h3>';
   html += `<div class="output__causal">${generateCausalAnalysis()}</div>`;
+
+  // ── Anti-Pattern Cases: 逆规律案例 ──
+  const antiHtml = generateAntiCases();
+  if (antiHtml) {
+    html += '<h3>🔮 逆规律案例</h3>';
+    html += '<div class="output__anti">' + antiHtml + '</div>';
+  }
 
   // ── Boundary Conditions: 失效条件 ──
   html += '<h3>⚠️ 边界条件 & 失效分析</h3>';
@@ -2070,7 +2321,7 @@ function generateHighlights() {
   const selectedIds = new Set();
   Object.keys(state).forEach(catKey => {
     if (catKey === 'narrative') { state.narrative.dominant.forEach(id => selectedIds.add(id)); state.narrative.auxiliary.forEach(id => selectedIds.add(id)); }
-    else { state[catKey].forEach(id => selectedIds.add(id)); }
+    else if (catKey === 'layerUnlocked' || catKey === 'activeGenre' || catKey === 'bizDept' || catKey === 'bizRole') { /* skip */ } else { state[catKey].forEach(id => selectedIds.add(id)); }
   });
   if (STORY_MAP.highlightRules) {
     STORY_MAP.highlightRules.forEach(rule => { if (rule.match.every(id => selectedIds.has(id))) highlights.push(rule.text); });
@@ -2083,6 +2334,343 @@ function generateHighlights() {
 }
 
 // ═══════════════════════════════════
+
+// ═══════════════════════════════════
+// ANTI_PATTERN_CASES: 逆规律案例库 (v1.7)
+// ═══════════════════════════════════
+const ANTI_PATTERN_CASES = [
+  { id:'AP1', name:'新西游记：没有胜负的综艺', genre:'travel',
+    brokenRule:'传统综艺需要胜负或悬念驱动（对抗引擎E2/悬念引擎E3），但新西游记证明了"好笑本身就是目的"',
+    conditions:['有姜虎东+李秀根级别的主持人化学反应','移动容器（S7）强制共处制造自然互动','运气机制（F8）让"不公平"变成笑料'],
+    attribution:'幽默引擎（E8）+ 颠覆者角色（C8）= 观众不需要在乎输赢，只需要期待"这次谁又搞笑了"',
+    reusable:'有 2+ 个敢于出丑的核心人物，且移动空间限制逃避',
+    notReusable:'纯棚内录制、成员都在意形象',
+    relatedChains:['CC6','CC13'] },
+  { id:'AP2', name:'种地吧：素人做真农活', genre:'survival',
+    brokenRule:'需要明星/流量吸引初始观众 —— 纯素人+农业题材被认为"没人看"',
+    conditions:['自然节律（T9）让时间压力来自天而非制作组','失败展示（A3）+身体证据（A6）= 真实不可伪造','成长引擎（E1）全周期可见——从播种到收获的完整闭环'],
+    attribution:'真实性锚点密度（A1+A2+A3+A6+T9）达到临界质量 → 观众不再要求"明星"，转而要求"真实"',
+    reusable:'有真实的、不可造假的体力劳动/技能学习过程，且时间跨度≥3个月',
+    notReusable:'棚内录制、短期（<1个月）、可以用替身的体力劳动',
+    relatedChains:['CC3','CC14'] },
+  { id:'AP3', name:'乘风破浪的姐姐：逆年龄选秀', genre:'talent_show',
+    brokenRule:'选秀节目需要年轻（18-25岁）参与者 —— 30+被认为"过了巅峰"',
+    conditions:['参与者已有知名度→观众自带情感绑定','对抗引擎（E2）对手是"年龄偏见"而非彼此','出口设计O8各走各路→没有人被"成团"定义'],
+    attribution:'把"年龄劣势"重新定义为"人生经验优势"——镜像绑定（观众看到自己）> 审美绑定（观众仰望偶像）',
+    reusable:'参与者与目标观众的处境高度相似（镜像绑定生效），且技能差异不是核心看点',
+    notReusable:'参与者没有社会知名度（新人需要被"发现"，30+新人缺乏先天优势）',
+    relatedChains:[] },
+  { id:'AP4', name:'认识的哥哥：教室即片场', genre:'observation',
+    brokenRule:'综艺需要旅行/任务/比赛 —— 固定教室+固定角色+无外部目标被认为"没内容"',
+    conditions:['颠覆者角色（C8）扎堆→每个人都在测试"教室"规则的弹性','旁观者角色（C10）做观众嘴替→提供外部视角','幽默引擎（E8）主导——好笑本身就是内容'],
+    attribution:'固定空间+固定角色→关系深度碾压任何外部任务。观众的每周期待不是"发生了什么"，是"这群人又怎么互相逗了"',
+    reusable:'有稳定的核心班底（≥5人），且已有成熟的化学反应',
+    notReusable:'新组建的临时班底、频繁换人',
+    relatedChains:['CC13'] },
+  { id:'AP5', name:'向往的生活：什么都没有发生', genre:'observation',
+    brokenRule:'综艺需要事件驱动 ——"就是做饭聊天发呆"被认为撑不起一集',
+    conditions:['治愈引擎（E7）+ 陪伴型观看（V7）= 观众不是追内容，是追"有人在旁边"的感觉','慢时间（T8）——空白也是内容','何炅+黄磊的主持人组合→自带信任和温暖感'],
+    attribution:'2020s信息过载→"每周一小时的安静"从"无聊"变成"稀缺资源"。观众打开不是为了看好内容，是为了"有人在旁边"',
+    reusable:'社会情绪处于焦虑/过载期，且核心人物有天然的温暖感和可信度',
+    notReusable:'社会情绪处于"需要刺激"的阶段（如疫后报复性消费期）',
+    relatedChains:['CC8'] },
+  { id:'AP6', name:'换乘恋爱：前任比陌生人更刺激', genre:'dating',
+    brokenRule:'恋综需要陌生人相遇 —— 前任关系被认为"太尴尬/太沉重/不适合综艺"',
+    conditions:['关系引擎（E4）+ 揭秘引擎（E6）叠加→观众同时追"关系怎么变"和"过去发生了什么"','暧昧者C7+对照者C3→"新欢vs旧爱"的对照是天然的价值观辩论','观看契约V1纯围观——不投票不干预，让复杂关系自然演化'],
+    attribution:'"前任"不是bug是feature——每对前任都带着一段观众不知道的历史，好奇心驱动>尴尬感',
+    reusable:'参与者之间有真实的、有厚度的过往关系（不限于恋爱，可以是同学/前同事/旧友）',
+    notReusable:'参与者之间关系太浅（只见过几次）、或关系创伤太新（<6个月）',
+    relatedChains:['CC4'] },
+  { id:'AP7', name:'街头女战士：没有偶像的舞蹈比赛', genre:'talent_show',
+    brokenRule:'舞蹈类节目需要偶像/明星引流 —— 纯职业舞者被认为"太小众"',
+    conditions:['对抗引擎（E2）纯粹——对手是"另一支舞团"，不是"人气票"','F1专家评审（舞者互评）+ F2客观数据→权威来自同行认可','A6身体证据→舞蹈的身体极限无法伪造'],
+    attribution:'去偶像化→观众注意力从"追星"转向"欣赏技艺"。审美绑定（被舞技震撼）替代了粉丝绑定',
+    reusable:'参与者技能水平远超普通观众，且评价标准客观可见',
+    notReusable:'参与者技能水平与观众差距不大（"我也能试试"→没有审美绑定）',
+    relatedChains:['CC7'] },
+  { id:'AP8', name:'PRODUCE 101：全民制作人', genre:'talent_show',
+    brokenRule:'专家决定出道 —— 观众投票（F4+V2）被认为"不专业"',
+    conditions:['付出绑定正反馈螺旋（CC1）→每次投票加深情感投资','周期性悬念（CC5）→每周淘汰日制造仪式感','成长全周期可见（CC3）→观众不是"选"偶像，是"养成"偶像'],
+    attribution:'投票不是"做选择"——是"参与养成"。沉没成本让观众从"旁观者"变成"自己人"',
+    reusable:'观众有实质性的、反复的决策权（不限于投票），且决策后果可见',
+    notReusable:'中国饭圈打投禁令下，F4+V2定生死模式已不可行。需改为投票定福利/任务而非定生死',
+    relatedChains:['CC1','CC5','CC3','CC10'] },
+  { id:'AP9', name:'无限挑战：什么都能做的综艺', genre:'travel',
+    brokenRule:'综艺需要固定类型/格式 ——"每期换主题"被认为"没有品牌辨识度"',
+    conditions:['核心班底化学反应极强（≥5年磨合）','实验引擎（E5）——"如果让这群人去___会怎样"作为每期的发端','颠覆者角色（C8）扎堆 + 幽默引擎（E8）主导'],
+    attribution:'格式不重要，人重要。当核心班底的化学反应足够强，"看这群人做任何事"本身就是卖点',
+    reusable:'有经过多季磨合的固定班底（≥3季），化学反应已被验证',
+    notReusable:'新节目第一季、临时班底',
+    relatedChains:['CC13'] },
+  { id:'AP10', name:'Running Man：不淘汰的竞技', genre:'talent_show',
+    brokenRule:'竞技综艺需要淘汰制造紧张 —— 游戏输了只是"惩罚"被认为"没有真正的赌注"',
+    conditions:['游戏引擎（E9）+ 幽默引擎（E8）主导→观众享受"看聪明人玩规则"','颠覆者C8+运气F8→结果不可预测但没人受伤','移动容器S7+开放世界S3→每期新场景新规则'],
+    attribution:'惩罚（画脸/穿丑衣服）替代淘汰→淘汰制造"恐惧"，惩罚制造"笑料"。观众害怕淘汰但期待惩罚',
+    reusable:'惩罚有趣但不羞辱人，且参与者不抵触出丑',
+    notReusable:'惩罚过于严厉或羞辱性（中国观众对"整蛊"敏感度更高）',
+    relatedChains:['CC6','CC9','CC13'] }
+];
+
+
+// ═══════════════════════════════════
+// SIGNAL_FEED: 发端引擎信号数据 (v1.8)
+// ═══════════════════════════════════
+const SIGNAL_FEED = [
+  { id:'H1', channel:'热议', topic:'AI替代焦虑', source:'微博/知乎 · 2025-09~2026-06',
+    angle:'职场人担心被AI取代→选秀/竞技类可做"人机对决"或"AI辅助创作"', genres:['talent_show','survival'] },
+  { id:'H2', channel:'热议', topic:'县城青年回流', source:'抖音/快手 · 2026-Q1',
+    angle:'年轻人离开一线回县城→观察类/群居实验可做"回乡青年共创社区"', genres:['observation','communal'] },
+  { id:'H3', channel:'热议', topic:'搭子文化进化', source:'小红书/微博 · 2025-2026',
+    angle:'从饭搭子到旅行搭子到养老搭子→恋综/群居可做"陌生人搭子实验"', genres:['dating','communal'] },
+  { id:'H4', channel:'热议', topic:'35岁职场危机', source:'知乎/脉脉 · 2025-2026',
+    angle:'中年转型焦虑→生存/挑战类可做"35岁重启人生"', genres:['survival','talent_show'] },
+  { id:'H5', channel:'热议', topic:'数字游民/远程办公', source:'即刻/小红书 · 2025-2026',
+    angle:'不受地理限制的工作方式→旅行/公路类可做"移动工作站"', genres:['travel'] },
+  { id:'S1', channel:'高赞', topic:'素人改造/逆袭', source:'抖音 · 2026',
+    angle:'普通人经过专业打造后的反差→选秀可做"素人造星"', genres:['talent_show'] },
+  { id:'S2', channel:'高赞', topic:'慢生活vlog', source:'B站/小红书 · 2026',
+    angle:'治愈系日常内容持续高互动→观察类可做"城市慢生活"', genres:['observation'] },
+  { id:'S3', channel:'高赞', topic:'陌生人社交实验', source:'B站/抖音 · 2026',
+    angle:'随机匹配陌生人共处→群居实验/恋综可做"算法匹配共居"', genres:['communal','dating'] },
+  { id:'D1', channel:'剧集', topic:'女性群像/姐妹情谊', source:'《欢乐颂》《三十而已》系列 · 进行时',
+    angle:'女性互助叙事→群居实验/观察类可做"女性共创空间"', genres:['communal','observation'] },
+  { id:'D2', channel:'剧集', topic:'代际冲突', source:'《小欢喜》《都挺好》系列 · 完成时再发酵',
+    angle:'父母vs子女价值观碰撞→观察类可做"代际共居实验"', genres:['observation','communal'] },
+  { id:'D3', channel:'剧集', topic:'重生/逆袭叙事', source:'短剧爆款题材 · 进行时',
+    angle:'"重来一次"的爽感→竞技/生存类可做"失败者重启计划"', genres:['talent_show','survival'] },
+  { id:'J1', channel:'日韩', topic:'소확행（小确幸）→ 微幸福经济', source:'韩剧/韩综趋势 · 2024-2025',
+    angle:'不追求大成功，追求日常小幸福→观察类/治愈向可做"微小成就挑战"', genres:['observation'] },
+  { id:'J2', channel:'日韩', topic:'一人家庭/独居时代', source:'韩综《我独自生活》+日剧 · 2023-2025',
+    angle:'独居不孤单→观察类/群居可做"独居者联盟"', genres:['observation','communal'] },
+  { id:'J3', channel:'日韩', topic:'비혼（非婚）主义', source:'韩综讨论 · 2024-2025',
+    angle:'不结婚但渴望亲密关系→恋综可做"非婚伴侣实验"', genres:['dating'] },
+  { id:'J4', channel:'日韩', topic:'老後破産/老年贫困', source:'日剧+NHK纪录片 · 2023-2024',
+    angle:'老年经济压力→生存/群居可做"老年共创社区"', genres:['survival','communal'] },
+];
+
+// KOREAN_SHOW_DB: 韩综样本库 (v1.12)
+const KOREAN_SHOW_DB = [
+  { id:'K1', show:'PRODUCE 101', genre:'talent_show', year:2016, network:'Mnet',
+    mechanism:'101名练习生→全民投票→11人出道', innovation:'「国民制作人」概念，观众即决策者',
+    douban:8.1, takeaway:'选秀的核心不是舞台，是观众对练习生的情感投资过程' },
+  { id:'K2', show:'Show Me The Money', genre:'talent_show', year:2012, network:'Mnet',
+    mechanism:'地下rapper海选→团队battle→音源竞演', innovation:'把underground文化拉到主流，真实感>精致感',
+    douban:8.5, takeaway:'竞技类节目的真实性来自选手的「未被驯化」，而非赛制设计' },
+  { id:'K3', show:'Heart Signal', genre:'dating', year:2017, network:'Channel A',
+    mechanism:'素人合住+信号发送+演播室推理', innovation:'恋爱+推理双线，「观众比当事人更急」',
+    douban:8.3, takeaway:'恋综的驱动力不在配对结果，在「猜谁喜欢谁」的认知缺口' },
+  { id:'K4', show:'换乘恋爱', genre:'dating', year:2021, network:'TVING',
+    mechanism:'分手情侣合住→前任在场的情况下新恋爱', innovation:'把「前任」变成叙事炸弹，每集一个修罗场',
+    douban:8.7, takeaway:'情感类节目的最高杠杆是「观众知道但当事人不知道」的信息不对等' },
+  { id:'K5', show:'我独自生活', genre:'observation', year:2013, network:'MBC',
+    mechanism:'独居艺人日常vlog→演播室reaction', innovation:'不制造冲突，靠「窥视真实生活」取胜',
+    douban:8.9, takeaway:'观察类的核心是「足够真实的样本+足够有趣的观察者」' },
+  { id:'K6', show:'The Genius', genre:'survival', year:2013, network:'tvN',
+    mechanism:'13人脑力游戏→每集淘汰1人', innovation:'综艺版的「鱿鱼游戏」先驱，规则复杂度=看点',
+    douban:9.3, takeaway:'生存类节目的规则设计比选手更重要——规则即内容' },
+  { id:'K7', show:'体能之巅', genre:'survival', year:2023, network:'Netflix',
+    mechanism:'100名体格顶尖者→体能淘汰赛→终极对决', innovation:'纯身体竞技，无剧本无 drama',
+    douban:7.8, takeaway:'身体本身的叙事力不弱于剧本——100个身体=100种故事' },
+  { id:'K8', show:'Roommate', genre:'communal', year:2014, network:'SBS',
+    mechanism:'11位艺人同住→日常生活+任务', innovation:'跨代际群居，代际冲突即内容',
+    douban:7.9, takeaway:'群居实验的张力=边界磨合。初期的尴尬和冲突比后期的和谐更好看' },
+  { id:'K9', show:'新西游记', genre:'travel', year:2015, network:'tvN',
+    mechanism:'成员cos经典角色→游戏通关→龙珠收集', innovation:'IP化角色扮演+游戏化旅行的终极形态',
+    douban:9.6, takeaway:'罗PD的核心方法论：把旅行变成游戏，把艺人变成角色' },
+  { id:'K10', show:'花样青春', genre:'travel', year:2014, network:'tvN',
+    mechanism:'「绑架」艺人→扔到国外→穷游', innovation:'剥夺控制权=制造真实反应，「被安排的意外」',
+    douban:9.4, takeaway:'旅行类节目的意外感比风景重要。让参与者失控，观众才能看到真人' },
+  { id:'K11', show:'孝利家民宿', genre:'observation', year:2017, network:'JTBC',
+    mechanism:'李孝利夫妇开放济州岛家→接待普通游客', innovation:'明星降维到服务业，去光环化=真实感',
+    douban:9.3, takeaway:'观察类的终极武器是「日常感」。大明星做普通事比做大事更吸引人' },
+  { id:'K12', show:'Begin Again', genre:'travel', year:2017, network:'JTBC',
+    mechanism:'音乐人去陌生城市→街头即兴演出', innovation:'无赛制无淘汰，纯靠音乐+地点+即兴化学反应',
+    douban:9.5, takeaway:'当内容本身足够强（音乐+人文+旅行），赛制反而是减分项' }
+];
+
+// SIGNAL_ELEMENT_MAP: 每个信号→推荐发端引擎 (v1.13)
+// 点击信号卡片只填充叙事引擎（发端层），不动其他层
+const SIGNAL_ELEMENT_MAP = {
+  H1: { dominant:['E2'], auxiliary:['E5'] },
+  H2: { dominant:['E7'], auxiliary:['E5'] },
+  H3: { dominant:['E4'], auxiliary:['E5'] },
+  H4: { dominant:['E2'], auxiliary:['E1'] },
+  H5: { dominant:['E5'], auxiliary:['E7'] },
+  S1: { dominant:['E1'], auxiliary:['E6'] },
+  S2: { dominant:['E7'], auxiliary:[] },
+  S3: { dominant:['E4'], auxiliary:['E5'] },
+  D1: { dominant:['E4'], auxiliary:['E7'] },
+  D2: { dominant:['E4'], auxiliary:['E5'] },
+  D3: { dominant:['E1'], auxiliary:['E2'] },
+  J1: { dominant:['E7'], auxiliary:[] },
+  J2: { dominant:['E7'], auxiliary:['E5'] },
+  J3: { dominant:['E4'], auxiliary:['E5'] },
+  J4: { dominant:['E2'], auxiliary:['E7'] }
+};
+
+// KOREAN_ELEMENT_MAP: 每个韩综→推荐发端引擎 (v1.13)
+// 点击韩综卡片只填充叙事引擎（发端层），不动其他层
+const KOREAN_ELEMENT_MAP = {
+  K1: { dominant:['E1'], auxiliary:['E3'] },
+  K2: { dominant:['E2'], auxiliary:['E1'] },
+  K3: { dominant:['E4'], auxiliary:['E3'] },
+  K4: { dominant:['E4'], auxiliary:['E3'] },
+  K5: { dominant:['E7'], auxiliary:['E6'] },
+  K6: { dominant:['E9'], auxiliary:['E3'] },
+  K7: { dominant:['E2'], auxiliary:['E1'] },
+  K8: { dominant:['E4'], auxiliary:['E7'] },
+  K9: { dominant:['E8'], auxiliary:['E9'] },
+  K10: { dominant:['E8'], auxiliary:['E5'] },
+  K11: { dominant:['E7'], auxiliary:['E6'] },
+  K12: { dominant:['E7'], auxiliary:['E6'] }
+};
+
+const GENRE_SIGNAL_WEIGHTS = {
+  talent_show: { '热议':2, '高赞':1, '剧集':1, '日韩':0.5 },
+  dating:      { '热议':2, '高赞':1.5, '剧集':0.5, '日韩':1 },
+  observation: { '热议':1, '高赞':1, '剧集':2, '日韩':1.5 },
+  survival:    { '热议':1, '高赞':0.5, '剧集':1, '日韩':1 },
+  communal:    { '热议':1.5, '高赞':1, '剧集':1.5, '日韩':1.5 },
+  travel:      { '热议':1, '高赞':1.5, '剧集':0.5, '日韩':0.5 },
+};
+
+const CHANNEL_EMOJI = { '热议':'🔥', '高赞':'👍', '剧集':'📺', '日韩':'🌏' };
+
+function getRelevantSignals(genre, limit) {
+  limit = limit || 6;
+  var signals = SIGNAL_FEED.map(function(s) {
+    var genreMatch = !genre || s.genres.indexOf(genre) >= 0;
+    var baseWeight = genre ? (GENRE_SIGNAL_WEIGHTS[genre] && GENRE_SIGNAL_WEIGHTS[genre][s.channel] || 1) : 1;
+    return { id:s.id, channel:s.channel, topic:s.topic, source:s.source, angle:s.angle,
+             score: genreMatch ? baseWeight : baseWeight * 0.3 };
+  });
+  signals.sort(function(a,b) { return b.score - a.score; });
+  return signals.slice(0, limit);
+}
+
+function renderSignalCards() {
+  var grid = document.getElementById('signalGrid');
+  if (!grid) return;
+  var genre = state.activeGenre;
+  var signals = getRelevantSignals(genre);
+
+  if (signals.length === 0) {
+    grid.innerHTML = '<div style="color:var(--text-muted);font-size:0.875rem;padding:12px;text-align:center">当前类型片暂无匹配信号</div>';
+    return;
+  }
+
+  var tag = document.getElementById('signalGenreTag');
+  if (tag) {
+    var genreNames = { talent_show:'选秀/竞技', dating:'恋综/情感', observation:'观察类', survival:'生存/挑战', communal:'群居实验', travel:'旅行/公路' };
+    tag.textContent = genre ? genreNames[genre] || genre : '通用模式';
+  }
+
+  grid.innerHTML = signals.map(function(s) {
+    return '<div class="signal-card" onclick="applySignalMapping(\'' + s.id + '\')" style="cursor:pointer">' +
+      '<span class="signal-card__channel">' + (CHANNEL_EMOJI[s.channel] || '') + ' ' + s.channel + '</span>' +
+      '<div class="signal-card__topic">' + s.topic + '</div>' +
+      '<div class="signal-card__source">' + s.source + '</div>' +
+      '<div class="signal-card__angle">💡 ' + s.angle + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function toggleSignalPanel() {
+  var panel = document.getElementById('signalPanel');
+  if (!panel) return;
+  var isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) renderSignalCards();
+}
+
+function refreshSignalPanel() {
+  var panel = document.getElementById('signalPanel');
+  if (panel && panel.style.display !== 'none') renderSignalCards();
+}
+
+// KOREAN SHOW PANEL (v1.12)
+function getRelevantKoreanShows(genre) {
+  if (!genre) return KOREAN_SHOW_DB;
+  return KOREAN_SHOW_DB.filter(function(s) { return s.genre === genre; });
+}
+
+function renderKoreanShowCards() {
+  var grid = document.getElementById('koreanGrid');
+  if (!grid) return;
+  var genre = state.activeGenre;
+  var shows = getRelevantKoreanShows(genre);
+
+  if (shows.length === 0) {
+    grid.innerHTML = '<div style="color:var(--text-muted);font-size:0.875rem;padding:12px;text-align:center">当前类型片暂无韩综样本，显示全部参考 ↓</div>' +
+      KOREAN_SHOW_DB.map(renderKoreanCard).join('');
+    return;
+  }
+
+  var tag = document.getElementById('koreanGenreTag');
+  if (tag) {
+    var genreNames = { talent_show:'选秀/竞技', dating:'恋综/情感', observation:'观察类', survival:'生存/挑战', communal:'群居实验', travel:'旅行/公路' };
+    tag.textContent = genre ? genreNames[genre] || genre : '全部类型';
+  }
+
+  grid.innerHTML = shows.map(renderKoreanCard).join('');
+}
+
+function renderKoreanCard(s) {
+  return '<div class="signal-card" onclick="applyKoreanMapping(\'' + s.id + '\')" style="cursor:pointer">' +
+    '<div class="signal-card__channel">🇰🇷 ' + s.network + ' · ' + s.year + ' · ⭐' + s.douban + '</div>' +
+    '<div class="signal-card__topic">' + s.show + '</div>' +
+    '<div class="signal-card__source">' + s.mechanism + '</div>' +
+    '<div class="signal-card__angle">💡 ' + s.takeaway + '</div>' +
+    '<div style="margin-top:8px;font-size:0.75rem;color:var(--accent);border-top:1px solid var(--border);padding-top:6px">🆕 ' + s.innovation + '</div>' +
+  '</div>';
+}
+
+function toggleKoreanShowPanel() {
+  var panel = document.getElementById('koreanShowPanel');
+  if (!panel) return;
+  var isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) renderKoreanShowCards();
+}
+
+function refreshKoreanShowPanel() {
+  var panel = document.getElementById('koreanShowPanel');
+  if (panel && panel.style.display !== 'none') renderKoreanShowCards();
+}
+
+// SIGNAL / KOREAN SHOW MAPPING (v1.13)
+// 点击信号/韩综卡片 → 只填充叙事引擎（发端层），不碰其他层
+function applyNarrativeMapping(m, title) {
+  if (!m) return;
+  // 只清叙事引擎
+  state.narrative.dominant.clear();
+  state.narrative.auxiliary.clear();
+  // 填入新值
+  m.dominant.forEach(function(id) { state.narrative.dominant.add(id); });
+  m.auxiliary.forEach(function(id) { state.narrative.auxiliary.add(id); });
+  // 解锁 L1
+  if (!state.layerUnlocked[0]) state.layerUnlocked[0] = true;
+  refreshAllChips();
+  syncLayerState();
+  // 只在标题为空或默认值时填充，不覆盖用户已输入的标题
+  var titleInput = document.getElementById('outputTitle');
+  if (title && (!titleInput.value || titleInput.value === '未命名方案')) {
+    titleInput.value = title;
+  }
+  generate();
+  // 弹回发端层，不跳到底部输出面板
+  document.getElementById('grid').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function applySignalMapping(signalId) {
+  applyNarrativeMapping(SIGNAL_ELEMENT_MAP[signalId], '信号推荐方案');
+}
+
+function applyKoreanMapping(koreanId) {
+  var show = KOREAN_SHOW_DB.find(function(s) { return s.id === koreanId; });
+  applyNarrativeMapping(KOREAN_ELEMENT_MAP[koreanId], show ? '参考「' + show.show + '」' : '韩综参考方案');
+}
+
 // CAUSAL ANALYSIS: 因果推导链生成
 // ═══════════════════════════════════
 function getSelectedIds() {
@@ -2153,6 +2741,67 @@ function generateCausalAnalysis() {
 }
 
 // ═══════════════════════════════════
+
+// ═══════════════════════════════════
+// ANTI-PATTERN CASES: 逆规律案例匹配 (v1.7)
+// ═══════════════════════════════════
+function getMatchedAntiCases() {
+  const ids = getSelectedIds();
+  if (ids.size === 0) return [];
+
+  // Get activated chain IDs
+  const activatedChains = CAUSAL_CHAINS
+    .filter(c => c.requires.every(id => ids.has(id)))
+    .map(c => c.id);
+
+  // Match anti-pattern cases by chain overlap
+  return ANTI_PATTERN_CASES
+    .map(c => {
+      const chainOverlap = c.relatedChains.filter(cid => activatedChains.includes(cid));
+      let score = chainOverlap.length;
+      // Bonus for genre match
+      if (state.activeGenre && c.genre === state.activeGenre) score += 2;
+      return { ...c, score, chainOverlap };
+    })
+    .filter(c => c.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+}
+
+function generateAntiCases() {
+  const matches = getMatchedAntiCases();
+  if (matches.length === 0) return '';
+
+  const genreNames = { talent_show:'选秀/竞技', dating:'恋综/情感', observation:'观察类', survival:'生存/挑战', communal:'群居实验', travel:'旅行/公路' };
+
+  return matches.map(c => {
+    const badge = genreNames[c.genre] || c.genre;
+    const conditionsHtml = c.conditions.map(cond => '<li>' + cond + '</li>').join('');
+
+    return '<div class="anti-case">' +
+      '<div class="anti-case__header">' +
+        '<span class="anti-case__badge">' + badge + '</span>' +
+        '<span class="anti-case__name">' + c.name + '</span>' +
+      '</div>' +
+      '<div class="anti-case__rule">💡 打破了：' + c.brokenRule + '</div>' +
+      '<div class="anti-case__conditions">✅ 当时具备：<ul style="margin:4px 0 0;padding-left:20px">' + conditionsHtml + '</ul></div>' +
+      '<div class="anti-case__attribution">🎯 为什么爆了：' + c.attribution + '</div>' +
+      '<div class="anti-case__reusable">✅ 可复用：' + c.reusable + '</div>' +
+      '<div class="anti-case__not-reusable">❌ 不可复用：' + c.notReusable + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// Get anti-case context for AI prompts
+function getAntiCaseContext() {
+  const matches = getMatchedAntiCases();
+  if (matches.length === 0) return '';
+  const lines = matches.slice(0, 3).map(c =>
+    '- ' + c.name + '：' + c.attribution.slice(0, 100)
+  );
+  return '\n\n当前方案可能踩中的黑马模式：\n' + lines.join('\n') + '\n在脑暴时可参考这些路线，但不要直接套用。';
+}
+
 // BOUNDARY CONDITIONS: 失效条件检测
 // ═══════════════════════════════════
 function generateBoundaryConditions() {
@@ -2526,7 +3175,8 @@ async function aiBrainstorm() {
 
   setAIButtonLoading('btnBrainstorm', true);
   try {
-    const systemPrompt = '你在一个综艺策划的创意会上，桌上摊着一组方案元素。你的角色是那个敢想敢说、不怕推翻重来的创意顾问。看了这组元素之后，你的任务是：\n\n1. 先一句话抓住这个方案的灵魂——不是复述元素，是说出它让人兴奋的那个东西。\n\n2. 然后提 3-4 个变体方向。别只绕着引擎和空间转，可以动的地方很多：时间结构、出口设计、人物关系、筛选机制、观看契约——随便拆一个，看看方案会怎么变。每个方向用 1-2 句说清楚，说说换了之后会带来什么新东西。\n\n3. 最后当一回魔鬼代言人，提 2-3 个风险。不要泛泛地说\"可能不好看\"——具体到商业风险（比如变现路径模糊）、执行风险（比如拍摄周期撑不住）、观众接受度风险（比如太实验了没人看）。每个风险给一句话的缓解思路。\n\n提替代方案时，用方案骨架里的具体元素名（比如\"把成长引擎换成实验引擎\"\"封闭空间改成半开放空间\"），这样方便直接在生成器里替换试。\n\n语气：像在开创意会。有火花，有碰撞，该夸就夸，该怼就怼。别写那种\"从多个维度来看……\"的废话开头。';
+    const antiCtx = getAntiCaseContext();
+  const systemPrompt = '你在一个综艺策划的创意会上，桌上摊着一组方案元素。你的角色是那个敢想敢说、不怕推翻重来的创意顾问。看了这组元素之后，你的任务是：\n\n1. 先一句话抓住这个方案的灵魂——不是复述元素，是说出它让人兴奋的那个东西。\n\n2. 然后提 3-4 个变体方向。别只绕着引擎和空间转，可以动的地方很多：时间结构、出口设计、人物关系、筛选机制、观看契约——随便拆一个，看看方案会怎么变。每个方向用 1-2 句说清楚，说说换了之后会带来什么新东西。\n\n3. 最后当一回魔鬼代言人，提 2-3 个风险。不要泛泛地说\"可能不好看\"——具体到商业风险（比如变现路径模糊）、执行风险（比如拍摄周期撑不住）、观众接受度风险（比如太实验了没人看）。每个风险给一句话的缓解思路。\n\n提替代方案时，用方案骨架里的具体元素名（比如\"把成长引擎换成实验引擎\"\"封闭空间改成半开放空间\"），这样方便直接在生成器里替换试。\n\n语气：像在开创意会。有火花，有碰撞，该夸就夸，该怼就怼。别写那种\"从多个维度来看……\"的废话开头。';
     const elList = buildElementList();
     const userContent = '以下是一个综艺方案的元素组合，请基于此进行创意脑暴：\n\n' + elList;
     const result = await callDeepSeek(systemPrompt, userContent, 0.9);
@@ -2562,7 +3212,8 @@ async function aiDiagnose() {
 
   setAIButtonLoading('btnDiagnose', true);
   try {
-    const systemPrompt = '你是一个专门给综艺方案挑毛病的审稿人。标准很直接：方案不是不能有短板，但不能有自己没意识到的短板。审阅覆盖这些维度：\n\n引擎冲突：两个引擎放在一起是互相加持还是互相拆台？举例：悬念引擎要的是"不知道"，治愈引擎要的是"放心"，同时主导会抵消。\n筛选单点：如果只有一种筛选机制（比如纯靠评委），万一这个机制失灵了（评委带偏见、观众不买账），有没有备手？\n真实性质感：2026 年的观众对"演的"极度敏感。真实性锚点选得够不够？选少了会被一眼看穿。\n出口匹配：出口反向决定了参与者的行为动机。成团出道的人会拼命表现，项目制的人只关心做完任务。出口和引擎对不对得上？\n人物密度：选的人物关系够不够撑起叙事？只有竞争者一种关系等于只有一条故事线，观众很快就腻。\n时空自洽：时间结构和空间规则有没有矛盾？比如"实时记录"放在"跳跃型时间"里就是矛盾的。\n观看闭环：观众怎么参与？如果只选了纯围观，商业回报从哪来？\n\n输出格式分三块，用 Markdown 标题区分：\n## ✅ 做得对的\n这个方案哪里选得好，不需要改。\n## ⚠️ 注意的\n不是错，但埋着雷，条件不对会炸。\n## ❌ 建议改的\n明确有问题，给具体的替换方案（用元素名，比如"把专家评审换成成员互评 + 客观数据"）。\n\n温度：严格但公正。如果组合本身就好，别硬挑。三段式里面可以某一块是空的。' +
+    const antiCtx2 = getAntiCaseContext();
+  const systemPrompt = '你是一个专门给综艺方案挑毛病的审稿人。标准很直接：方案不是不能有短板，但不能有自己没意识到的短板。审阅覆盖这些维度：\n\n引擎冲突：两个引擎放在一起是互相加持还是互相拆台？举例：悬念引擎要的是"不知道"，治愈引擎要的是"放心"，同时主导会抵消。\n筛选单点：如果只有一种筛选机制（比如纯靠评委），万一这个机制失灵了（评委带偏见、观众不买账），有没有备手？\n真实性质感：2026 年的观众对"演的"极度敏感。真实性锚点选得够不够？选少了会被一眼看穿。\n出口匹配：出口反向决定了参与者的行为动机。成团出道的人会拼命表现，项目制的人只关心做完任务。出口和引擎对不对得上？\n人物密度：选的人物关系够不够撑起叙事？只有竞争者一种关系等于只有一条故事线，观众很快就腻。\n时空自洽：时间结构和空间规则有没有矛盾？比如"实时记录"放在"跳跃型时间"里就是矛盾的。\n观看闭环：观众怎么参与？如果只选了纯围观，商业回报从哪来？\n\n输出格式分三块，用 Markdown 标题区分：\n## ✅ 做得对的\n这个方案哪里选得好，不需要改。\n## ⚠️ 注意的\n不是错，但埋着雷，条件不对会炸。\n## ❌ 建议改的\n明确有问题，给具体的替换方案（用元素名，比如"把专家评审换成成员互评 + 客观数据"）。\n\n温度：严格但公正。如果组合本身就好，别硬挑。三段式里面可以某一块是空的。' + antiCtx2 + 
       '\n\n' +
       '以下已通过客户端规则引擎诊断出的问题，供你参考（不要重复，补充规则引擎未覆盖的深层分析）：\n' +
       '🔴 致命冲突：' + clientResults.fatal.map(r=>r.id+' '+r.name).join('；') + '\n' +
@@ -2594,11 +3245,28 @@ async function aiBusiness() {
   setAIButtonLoading('btnBusiness', true);
   try {
     const systemPrompt = '你是一个帮综艺项目找钱的顾问。你见过太多方案死在"创意满分、商业零分"上。拿到一组方案元素，你的任务是判断这个东西能不能在市场上活下来。\n\n逐个过这 8 个维度，每个给一句判断。和当前方案无关的维度可以直接跳过不说：\n\n1. 收入天花板 —— 赞助、平台采购、会员、IP授权、线下活动、出海，哪些路能走、哪些是死路？\n2. 成本结构 —— 制作的烧钱点在哪。实时记录和开放世界是最贵的两个元素，碰上预算翻倍。棚内+周期性相对能控。\n3. 受众变现 —— 谁买单？Z世代女生是氪金主力，中年男性基本只贡献播放量。观看契约直接决定了变现上限。\n4. 人才依赖 —— 要请贵的吗？明星导师、流量嘉宾是成本黑洞。纯素人造星前期便宜但要赌成长性。\n5. 平台匹配 —— B站要社区感、抖音要碎片化、爱奇艺要会员拉新、卫视要收视率。元素组合决定了天生的平台归属。\n6. 政策敏感度 —— 粉丝投票、淘汰赛制、真实记录……哪些元素踩在中国综艺的政策敏感区？会不会播到一半被迫改规则？\n7. 时间窗口 —— 有没有天然播出时机？暑假（学生）、寒假（合家欢）、某个社会情绪的窗口期。好档期等于免费流量。\n8. 可复制性 —— S2能拍吗？格式能卖吗？还是一锤子买卖？\n\n输出用这个结构，注意：某个模块如果没什么值得说的，直接跳过，不要硬凑：\n\n## 💰 怎么赚钱\n收入模型 + 品牌匹配。具体到品类（说"运动饮料、3C数码"别说"快消品"），量级给数字区间并标"估算"。\n\n## ⚠️ 最大风险\n挑最要命的 1-2 个说。别罗列一堆不痛不痒的，集中火力讲最可能翻车的地方和缓解方向。\n\n## 🎯 值不值得投\n一句话。像跟投资人聊完走出来跟同事说的那种话。不是"建议审慎评估"，而是"这个方向对但团队和时机决定了是爆款还是炮灰"这种有判断、有信息量的话。\n\n禁止词：建议审慎评估、具有良好商业前景、有望实现、赋能、打造、闭环、抓手。';
+
+    // Append decision-maker context
+    const dept = state.bizDept;
+    const role = state.bizRole;
+    let personaCtx = '\n\n## 🎯 决策者画像\n';
+    personaCtx += '- 部门：' + (dept || '未指定，按通用平台方视角') + '\n';
+    personaCtx += '- 背景：' + (role || '未指定') + '\n';
+    if (!dept && !role) personaCtx += '（💡 可在 ⚙️ 设置中指定部门/角色视角，获得更精准的分析）\n';
+    if (dept || role) {
+      personaCtx += '\n基于以上画像，在分析末尾追加一段：\n';
+      personaCtx += '## 🎯 反向需求\n';
+      personaCtx += '该决策者最可能：\n';
+      personaCtx += '1. 提的 3-5 个具体问题\n';
+      personaCtx += '2. 反对的 2-3 个点及应对\n';
+      personaCtx += '3. 针对该决策者的关键说服策略\n';
+    }
+    const finalPrompt = systemPrompt + personaCtx;
     const userContent = '请分析以下方案元素的商业前景：\n\n' + buildElementList();
-    const result = await callDeepSeek(systemPrompt, userContent, 0.6);
+    const result = await callDeepSeek(finalPrompt, userContent, 0.6);
     window._aiContexts = window._aiContexts || {};
     window._aiContexts['business'] = {
-      systemPrompt: systemPrompt,
+      systemPrompt: finalPrompt,
       placeholder: '追问商业细节，比如：成本能再具体吗、平台差异…',
       thread: [
         { role: 'user', content: userContent },
@@ -3113,6 +3781,167 @@ function hideDiagnosisReport() {
 	});
 	// 滚动时自动隐藏 popover
 	window.addEventListener('scroll', () => hidePopover(), { passive: true });
+
+// ═══════════════════════════════════
+// LAYER MANAGEMENT (v1.6)
+// ═══════════════════════════════════
+
+function createLayerDivider(layerNum) {
+  const div = document.createElement('div');
+  div.className = 'layer-divider';
+  div.dataset.layer = layerNum;
+  const labels = ['', 'L1 发端层', 'L2 丰富层', 'L3 审视层'];
+  const descs = ['', '先确定叙事的入口和节奏', '🔒 完成 L1 后解锁', '🔒 完成 L2 后解锁'];
+  const badgeClass = 'layer-badge';
+  var signalBtn = layerNum === 1 ? '<button class="btn btn--ghost btn--signal" onclick="toggleSignalPanel()">📡 信号</button><button class="btn btn--ghost btn--signal" onclick="toggleKoreanShowPanel()">🇰🇷 韩综</button>' : '';
+  div.innerHTML = '<span class="' + badgeClass + '">' + labels[layerNum] + '</span> <span class="layer-desc" data-layer-desc="' + layerNum + '">' + descs[layerNum] + '</span>' + signalBtn;
+  return div;
+}
+
+function syncLayerState() {
+  const l1Complete = state.narrative.dominant.size > 0 && state.time.size > 0;
+  const l2Complete = state.space.size > 0 && state.filter.size > 0
+                  && state.characters.size > 0; // viewing optional
+
+  // Forward: unlock
+  if (l1Complete && !state.layerUnlocked[1]) setLayerLock(2, false);
+  if (l2Complete && !state.layerUnlocked[2]) setLayerLock(3, false);
+
+  // Reverse: re-lock
+  if (!l1Complete && state.layerUnlocked[1]) {
+    setLayerLock(2, true);
+    setLayerLock(3, true);
+  }
+  if (!l2Complete && state.layerUnlocked[2]) {
+    setLayerLock(3, true);
+  }
+}
+
+function setLayerLock(layerNum, locked) {
+  state.layerUnlocked[layerNum - 1] = !locked;
+  document.querySelectorAll('.card[data-layer="' + layerNum + '"]').forEach(function(card) {
+    card.classList.toggle('card--locked', locked);
+  });
+  var desc = document.querySelector('[data-layer-desc="' + layerNum + '"]');
+  if (desc) {
+    desc.textContent = locked
+      ? '🔒 完成 L' + (layerNum - 1) + ' 后解锁'
+      : layerNum === 2 ? '在发端引擎基础上丰富方案' : '脱离时间线，回头审视整体';
+  }
+}
+
+function handleL1Change() {
+  var downstream = [].concat(
+    Array.from(state.space), Array.from(state.filter), Array.from(state.characters),
+    Array.from(state.viewing), Array.from(state.exit), Array.from(state.authenticity)
+  );
+  if (downstream.length === 0) return true;
+  if (!confirm('修改 L1 发端元素会清空 L2/L3 的所有选择。确定要继续吗？')) return false;
+
+  ['space','filter','characters','viewing','exit','authenticity'].forEach(function(k) { state[k].clear(); });
+  showBacktrackBanner('⚠️ 发端引擎已修改，L2/L3 已重置');
+  return true;
+}
+
+function showBacktrackBanner(msg) {
+  var banner = document.getElementById('backtrackBanner');
+  banner.textContent = msg;
+  banner.classList.add('show');
+  clearTimeout(banner._timeout);
+  banner._timeout = setTimeout(function() { banner.classList.remove('show'); }, 4000);
+}
+
+// ═══════════════════════════════════
+// GENRE MANAGEMENT (v1.6)
+// ═══════════════════════════════════
+
+const GENRE_CONFIGS = {
+  talent_show: {
+    name: '选秀/竞技类', icon: '🏆',
+    l1Hints: { narrative: '对抗引擎或成长引擎是最自然的发端', time: '周期性节奏是标配' },
+    l1Suggest: { dominant: ['E2', 'E1'], auxiliary: ['E3', 'E4'] },
+    description: '淘汰+晋级驱动，筛选机制是核心'
+  },
+  dating: {
+    name: '恋综/情感类', icon: '💕',
+    l1Hints: { narrative: '关系引擎主导', time: '实时记录或周期性' },
+    l1Suggest: { dominant: ['E4'], auxiliary: ['E7', 'E3'] },
+    description: '关系建立与破裂驱动，人物网格是核心'
+  },
+  observation: {
+    name: '观察类', icon: '👀',
+    l1Hints: { narrative: '揭秘引擎或治愈引擎', time: '慢时间或实时记录' },
+    l1Suggest: { dominant: ['E6', 'E7'], auxiliary: ['E5'] },
+    description: '日常中的非常规，观看契约是核心'
+  },
+  survival: {
+    name: '生存/挑战类', icon: '🔥',
+    l1Hints: { narrative: '对抗引擎或实验引擎', time: '倒计时或自然节律' },
+    l1Suggest: { dominant: ['E2', 'E5'], auxiliary: ['E9'] },
+    description: '资源稀缺+困境驱动，空间规则和筛选机制并重'
+  },
+  communal: {
+    name: '群居实验类', icon: '🏠',
+    l1Hints: { narrative: '关系引擎或实验引擎', time: '实时记录或周期性' },
+    l1Suggest: { dominant: ['E5', 'E4'], auxiliary: ['E7'] },
+    description: '陌生人共处实验，人物网格+空间规则为核心'
+  },
+  travel: {
+    name: '旅行/公路类', icon: '🚐',
+    l1Hints: { narrative: '幽默引擎或审美驱动', time: '跳跃型或碎片化' },
+    l1Suggest: { dominant: ['E8', 'E3'], auxiliary: ['E9'] },
+    description: '位移+遭遇驱动，时间结构（行程）主导'
+  }
+};
+
+function setGenre(genreKey) {
+  state.activeGenre = genreKey || null;
+  if (state.activeGenre) {
+    var cfg = GENRE_CONFIGS[state.activeGenre];
+    updateL1Hints(cfg);
+    highlightSuggested(cfg);
+  } else {
+    resetL1Hints();
+    clearSuggested();
+  }
+  refreshSignalPanel();
+  refreshKoreanShowPanel();
+}
+
+function updateL1Hints(cfg) {
+  document.querySelectorAll('.card[data-layer="1"]').forEach(function(card) {
+    var catId = card.dataset.catId;
+    if (cfg.l1Hints[catId]) {
+      var hintEl = card.querySelector('.card__hint');
+      if (hintEl) hintEl.textContent = cfg.l1Hints[catId];
+    }
+  });
+}
+
+function resetL1Hints() {
+  CATEGORIES.filter(function(c) { return c.layer === 1; }).forEach(function(cat) {
+    var card = document.querySelector('.card[data-cat-id="' + cat.id + '"]');
+    if (card) {
+      var hintEl = card.querySelector('.card__hint');
+      if (hintEl) hintEl.textContent = cat.hint;
+    }
+  });
+}
+
+function highlightSuggested(cfg) {
+  clearSuggested();
+  var ids = (cfg.l1Suggest.dominant || []).concat(cfg.l1Suggest.auxiliary || []);
+  ids.forEach(function(id) {
+    var chip = document.querySelector('.chip[data-el-id="' + id + '"]');
+    if (chip && !chip.classList.contains('chip--selected') && !chip.classList.contains('chip--dominant') && !chip.classList.contains('chip--auxiliary')) {
+      chip.classList.add('chip--suggested');
+    }
+  });
+}
+
+function clearSuggested() {
+  document.querySelectorAll('.chip--suggested').forEach(function(c) { c.classList.remove('chip--suggested'); });
+}
 
 renderAll();
 </script>

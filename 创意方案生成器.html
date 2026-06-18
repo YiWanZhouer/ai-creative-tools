@@ -1,7 +1,7 @@
 <!-- ═══════════════════════════════════
-  创意方案生成器 · v2.4
-  变更: style: 设置弹窗 UI 对齐方案骨架生成器（modal-overlay 体系、统一字段样式、状态栏、服务器模式指示）；新增 btn--primary / btn--ghost 按钮体系
-  日期: 2026-06-12
+  创意方案生成器 · v2.5
+  变更: feat: 方案诊断模式（📋 提案诊断 tab → 粘贴已有方案 → AI按四维矩阵诊断 → 结构化输出）
+  日期: 2026-06-19
   ═══════════════════════════════════ -->
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -588,6 +588,37 @@
   }
 
   @media print { .settings-gear, .hero { background: #fff; color: #000; } }
+
+  /* Mode Tabs (v2.5) */
+  .mode-tabs {
+    display: flex; gap: 0; margin: 24px auto 0; max-width: 960px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .mode-tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 12px 16px; border: none; background: transparent; cursor: pointer;
+    font-family: inherit; color: var(--text-muted); transition: all 0.2s;
+    border-right: 1px solid var(--border);
+  }
+  .mode-tab:last-child { border-right: none; }
+  .mode-tab:hover { background: var(--surface-raised); color: var(--text); }
+  .mode-tab.active { background: var(--primary); color: white; }
+  .mode-tab.disabled { opacity: 0.4; pointer-events: none; cursor: not-allowed; }
+  .mode-tab__icon { font-size: 20px; }
+  .mode-tab__label { font-size: 13px; font-weight: 600; }
+
+  /* Diagnose Area (v2.5) */
+  .diagnose-area { margin-top: 24px; }
+  .diagnose-field { margin-bottom: 16px; }
+  .diagnose-field label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+  .diagnose-field textarea {
+    width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text); font-family: "SF Mono","Fira Code",monospace;
+    font-size: 13px; line-height: 1.6; resize: vertical; outline: none;
+  }
+  .diagnose-field textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+  .diagnose-field .field-hint { font-size: 11px; color: var(--text-secondary); margin-top: 4px; display: block; }
 </style>
 </head>
 <body>
@@ -598,11 +629,23 @@
 <!-- Hero -->
 <header class="hero">
   <div class="hero-content">
-    <div class="badge">四维设计矩阵 · v2.4 · DeepSeek V4 Pro</div>
+    <div class="badge">四维设计矩阵 · v2.5 · DeepSeek V4 Pro</div>
     <h1>创意方案生成器</h1>
     <p class="subtitle">四维设计矩阵 ➔ 输入层 ➔ 三个颗粒度输出</p>
   </div>
 </header>
+
+<!-- Mode Tabs -->
+<div class="mode-tabs" id="modeTabs">
+  <button class="mode-tab active" data-mode="generate" onclick="switchMode('generate')">
+    <span class="mode-tab__icon">✨</span>
+    <span class="mode-tab__label">生成方案</span>
+  </button>
+  <button class="mode-tab" data-mode="diagnose" onclick="switchMode('diagnose')">
+    <span class="mode-tab__icon">📋</span>
+    <span class="mode-tab__label">提案诊断</span>
+  </button>
+</div>
 
 <div class="wrapper">
 
@@ -757,6 +800,21 @@
     <p class="generate-hint" id="generateHint">先完成四维选择并填写必填项，再选择颗粒度</p>
   </div>
 
+  <!-- Diagnose Mode Input -->
+  <div class="diagnose-area" id="diagnoseArea" style="display:none">
+    <div class="diagnose-field">
+      <label>📋 粘贴已有方案全文</label>
+      <textarea id="diagnoseText" placeholder="将已完成的综艺方案全文粘贴到这里（PPT 内容、会议纪要、策划文档都可以）……&#10;&#10;AI 将按四维设计矩阵（驱动力 × 情感绑定 × 认知时刻 × 意义结构）框架进行诊断分析。" rows="12"></textarea>
+      <span class="field-hint" id="diagnoseHint">最少 50 字，越详细诊断越精准</span>
+    </div>
+    <div class="generate-area">
+      <button class="btn-generate" id="btnDiagnose" onclick="diagnoseProposal()">
+        🔍 开始诊断
+      </button>
+      <p class="generate-hint" id="diagnoseGenerateHint">AI 将逐维度分析优势、风险、偏差，并给出调整建议</p>
+    </div>
+  </div>
+
   <!-- Status Bar -->
   <div class="status-bar" id="statusBar">
     <div class="status-dot generating" id="statusDot"></div>
@@ -799,8 +857,7 @@
     <div class="modal__field">
       <label>模型</label>
       <select id="modelSelect">
-        <option value="deepseek-v4-pro">DeepSeek V4 Pro（推荐）</option>
-        <option value="deepseek-v4-flash">DeepSeek V4 Flash（快速）</option>
+        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
       </select>
     </div>
     <div class="modal__field">
@@ -1159,6 +1216,50 @@ const dimState = {
 
 let currentGranularity = 'minimal';
 let isGenerating = false;
+let currentMode = 'generate';
+let isDiagnosing = false;
+let cachedDiagnosis = null; // { content, rawContent }
+
+function switchMode(mode) {
+  if (isGenerating || isDiagnosing) return; // block during API calls
+  currentMode = mode;
+
+  // Update tabs
+  document.querySelectorAll('.mode-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.mode === mode);
+  });
+
+  // Toggle sections
+  if (mode === 'diagnose') {
+    // Hide generate sections
+    document.querySelectorAll('#dim-drive, #dim-binding, #dim-cognition, #dim-meaning, #dim-time, #dim-screening').forEach(function(el) { el.style.display = 'none'; });
+    if (document.getElementById('diagPanel')) document.getElementById('diagPanel').style.display = 'none';
+    document.querySelectorAll('.section-title').forEach(function(el) { el.style.display = 'none'; });
+    if (document.querySelector('.detail-grid')) document.querySelector('.detail-grid').style.display = 'none';
+    if (document.getElementById('granularityTabs')) document.getElementById('granularityTabs').style.display = 'none';
+    document.querySelectorAll('.generate-area').forEach(function(el) { el.style.display = 'none'; });
+    // Show diagnose area
+    document.querySelectorAll('#diagnoseArea').forEach(function(el) { el.style.display = 'block'; });
+    // Restore cached diagnosis if any
+    var outputArea = document.getElementById('outputArea');
+    var outputContainer = document.getElementById('outputContainer');
+    if (cachedDiagnosis) {
+      outputArea.innerHTML = cachedDiagnosis.content;
+      outputArea.dataset.rawContent = cachedDiagnosis.rawContent;
+      outputContainer.classList.add('visible');
+    }
+  } else {
+    // Show generate sections with their original display
+    document.querySelectorAll('#dim-drive, #dim-binding, #dim-cognition, #dim-meaning, #dim-time, #dim-screening').forEach(function(el) { el.style.display = ''; });
+    if (document.getElementById('diagPanel')) document.getElementById('diagPanel').style.display = '';
+    document.querySelectorAll('.section-title').forEach(function(el) { el.style.display = ''; });
+    if (document.querySelector('.detail-grid')) document.querySelector('.detail-grid').style.display = '';
+    if (document.getElementById('granularityTabs')) document.getElementById('granularityTabs').style.display = '';
+    // Only show generate-area (not diagnoseArea)
+    document.querySelectorAll('.generate-area').forEach(function(el) { el.style.display = ''; });
+    document.querySelectorAll('#diagnoseArea').forEach(function(el) { el.style.display = 'none'; });
+  }
+}
 
 // ═══════════ Dimension rendering ═══════════
 function renderDimensions() {
@@ -1868,6 +1969,138 @@ async function generate() {
   }
 
   resetGenerateButton(btn, hint, statusBar);
+}
+
+// ==================== DIAGNOSE PROPOSAL (v2.5) ====================
+async function diagnoseProposal() {
+  if (isDiagnosing) return;
+
+  var textarea = document.getElementById('diagnoseText');
+  var text = textarea.value.trim();
+
+  if (text.length < 50) {
+    showToast('⚠️ 文本过短（少于50字），请粘贴完整方案');
+    return;
+  }
+
+  isDiagnosing = true;
+  var btn = document.getElementById('btnDiagnose');
+  var hint = document.getElementById('diagnoseGenerateHint');
+  var statusBar = document.getElementById('statusBar');
+  var statusText = document.getElementById('statusText');
+  var statusDot = document.getElementById('statusDot');
+  var outputContainer = document.getElementById('outputContainer');
+  var outputArea = document.getElementById('outputArea');
+
+  btn.className = 'btn-generate loading';
+  btn.disabled = true;
+  hint.textContent = '正在调用 AI 分析方案…';
+
+  statusBar.classList.add('visible');
+  statusDot.className = 'status-dot generating';
+  statusText.textContent = 'AI 正在按四维矩阵框架诊断方案…';
+
+  outputContainer.classList.add('visible');
+  outputArea.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><p>正在逐维度分析中，请稍候…</p></div>';
+
+  // Disable mode switching during API call
+  document.querySelectorAll('.mode-tab').forEach(function(t) { t.classList.add('disabled'); });
+
+  var settings = getSettings();
+  if (!IS_SERVER_MODE && !settings.apiKey) {
+    showError('请先在 ⚙ 设置中填入 API Key');
+    resetDiagnoseButton(btn, hint, statusBar);
+    document.querySelectorAll('.mode-tab').forEach(function(t) { t.classList.remove('disabled'); });
+    return;
+  }
+
+  try {
+    var headers = { 'Content-Type': 'application/json' };
+    if (!IS_SERVER_MODE) headers['Authorization'] = 'Bearer ' + settings.apiKey;
+    var resp = await fetch(settings.endpoint, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({
+        model: settings.model,
+        messages: [
+          { role: 'system', content: buildDiagnoseSystemPrompt() },
+          { role: 'user', content: text }
+        ],
+        temperature: 0.5,
+        max_tokens: 4096
+      })
+    });
+
+    if (!resp.ok) {
+      var errText = await resp.text();
+      throw new Error('API 返回 ' + resp.status + ': ' + errText.slice(0, 300));
+    }
+
+    var data = await resp.json();
+    var content = data.choices?.[0]?.message?.content;
+    if (!content) throw new Error('API 返回了空内容');
+
+    outputArea.dataset.rawContent = content;
+    outputArea.innerHTML = renderMarkdown(content) + buildDiagnoseOutputFooter();
+
+    // Cache diagnosis result
+    cachedDiagnosis = { content: outputArea.innerHTML, rawContent: content };
+
+    statusDot.className = 'status-dot success';
+    statusText.textContent = '✅ 诊断完成';
+    setTimeout(function() { statusBar.classList.remove('visible'); }, 2500);
+
+  } catch (e) {
+    outputArea.innerHTML = '<div class="error-card"><div class="error-icon">⚠️</div><h4>诊断失败</h4><p>' + e.message + '</p></div>';
+    statusDot.className = 'status-dot error';
+    statusText.textContent = '❌ ' + e.message;
+    cachedDiagnosis = null;
+  }
+
+  btn.className = 'btn-generate';
+  btn.disabled = false;
+  isDiagnosing = false;
+  hint.textContent = 'AI 将逐维度分析优势、风险、偏差，并给出调整建议';
+  document.querySelectorAll('.mode-tab').forEach(function(t) { t.classList.remove('disabled'); });
+}
+
+function resetDiagnoseButton(btn, hint, statusBar) {
+  btn.className = 'btn-generate';
+  btn.disabled = false;
+  isDiagnosing = false;
+  hint.textContent = 'AI 将逐维度分析优势、风险、偏差，并给出调整建议';
+  statusBar.classList.remove('visible');
+}
+
+function buildDiagnoseSystemPrompt() {
+  return '你是一位资深综艺节目策划顾问，擅长用「四维设计矩阵」框架分析综艺方案。\n\n' +
+    '四维设计矩阵包含：\n' +
+    '1. **驱动力**：节目的核心动力是什么？观众为什么必须看？\n' +
+    '2. **情感绑定**：观众与内容的情感连接点在哪？\n' +
+    '3. **认知时刻**：节目提供什么认知价值（新知/洞察/反思）？\n' +
+    '4. **意义结构**：节目的意义层次是什么？从表层娱乐到深层价值？\n\n' +
+    '请严格按照以下格式输出诊断报告：\n\n' +
+    '## 📊 方案诊断报告\n\n' +
+    '### 一、维度覆盖分析\n' +
+    '逐维度分析输入方案的四维覆盖度（每维度给 🟢强 / 🟡中 / 🔴弱 评级并说明理由）\n\n' +
+    '### 二、核心优势\n' +
+    '方案最突出的 2-3 个亮点（结合四维矩阵框架说明）\n\n' +
+    '### 三、关键风险\n' +
+    '按严重度排序的 3-5 个风险点，每个风险说明：风险描述 → 可能后果 → 对应维度\n\n' +
+    '### 四、类型片偏差\n' +
+    '如果方案可以归入某个综艺类型片（选秀/恋综/观察类/生存挑战/群居实验/旅行公路），分析与该类型常规规律的偏差（哪些是创新，哪些是风险）\n\n' +
+    '### 五、调整建议\n' +
+    '3-5 条可执行的调整建议（分 P0 必须改 / P1 建议改 / P2 锦上添花），每条标注：优先级 | 涉及维度 | 具体建议 | 预期效果\n\n' +
+    '### 六、一句话总结\n' +
+    '用 1 句话总结这个方案的核心诊断结论\n\n' +
+    '要求：分析具体、引用方案原文作为证据、不做泛泛而谈。如果输入文本信息不足，明确指出「此处信息不足，无法判断」。';
+}
+
+function buildDiagnoseOutputFooter() {
+  return '<div class="output-footer" style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+    '<button class="btn btn--ghost" onclick="copyOutput()" style="font-size:12px">📋 复制诊断报告</button>' +
+    '<button class="btn btn--ghost" onclick="toggleEditPanel()" style="font-size:12px">✏️ 编辑</button>' +
+  '</div>';
 }
 
 function resetGenerateButton(btn, hint, statusBar) {
