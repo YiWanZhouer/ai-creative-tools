@@ -5,7 +5,7 @@ fetch_hot_signals.py — 每日热点快报管线
 抓取 4 源热搜 → 去重 → DeepSeek 分析 → 原子写入 signal_feed.json
 """
 
-import os, sys, re, json, time, tempfile, logging
+import os, sys, re, json, time, tempfile, logging, atexit, shutil
 from datetime import datetime, timedelta
 
 try:
@@ -431,18 +431,58 @@ def generate_signal_feed(raw_topics: list, sources_ok: list) -> bool:
 # ═══════════════════════════════════════════════════════════
 # 7. CONCURRENCY LOCK
 # ═══════════════════════════════════════════════════════════
-def acquire_lock() -> bool:
+def _write_pid():
+    """Write current PID inside the lock directory."""
+    with open(os.path.join(LOCK_DIR, 'pid'), 'w') as f:
+        f.write(str(os.getpid()))
+
+
+def _pid_alive(pid: int) -> bool:
+    """Check if a process with given PID exists. POSIX only (os.kill with signal 0)."""
     try:
-        os.makedirs(LOCK_DIR, exist_ok=False)
+        os.kill(pid, 0)
         return True
-    except FileExistsError:
+    except (ProcessLookupError, PermissionError):
         return False
 
 
-def release_lock():
+def acquire_lock() -> bool:
+    """Acquire mkdir-based lock with PID file for stale detection."""
     try:
-        os.rmdir(LOCK_DIR)
-    except Exception:
+        os.mkdir(LOCK_DIR)
+        os.chmod(LOCK_DIR, 0o755)
+        _write_pid()
+        atexit.register(release_lock)
+        return True
+    except FileExistsError:
+        # Lock exists — check if holder is alive
+        try:
+            with open(os.path.join(LOCK_DIR, 'pid')) as f:
+                pid = int(f.read().strip())
+            if _pid_alive(pid):
+                return False  # Lock valid
+        except (FileNotFoundError, ValueError):
+            pass  # PID file missing/corrupt → stale lock
+        # Stale lock — steal atomically
+        try:
+            shutil.rmtree(LOCK_DIR)
+        except FileNotFoundError:
+            pass
+        try:
+            os.mkdir(LOCK_DIR)
+            os.chmod(LOCK_DIR, 0o755)
+            _write_pid()
+            atexit.register(release_lock)
+            return True
+        except FileExistsError:
+            return False  # Another process grabbed it first
+
+
+def release_lock():
+    """Release lock directory. Safe to call multiple times."""
+    try:
+        shutil.rmtree(LOCK_DIR)
+    except FileNotFoundError:
         pass
 
 

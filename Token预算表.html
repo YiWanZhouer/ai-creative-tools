@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Token 预算计算器 · 30人团队</title>
+<style>
+  :root {
+    --bg: #faf8f3;
+    --card: #ffffff;
+    --border: #e8e2d8;
+    --text: #1e1b18;
+    --text-secondary: #8a8278;
+    --text-muted: #b0a89e;
+    --accent: #c0673c;
+    --accent-dim: rgba(192,103,60,0.08);
+    --blue: #3d7a9e;
+    --blue-dim: rgba(61,122,158,0.08);
+    --green: #4a8c5c;
+    --green-dim: rgba(74,140,92,0.08);
+    --amber: #d4a040;
+    --amber-dim: rgba(212,160,64,0.1);
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 20px rgba(0,0,0,0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 60px;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(160deg, #f5ede0 0%, #faf7f1 40%, #f0eae0 100%);
+    padding: 48px 32px 40px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute; top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle at 30% 40%, rgba(192,103,60,0.06) 0%, transparent 50%),
+                radial-gradient(circle at 70% 60%, rgba(61,122,158,0.04) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .header h1 {
+    font-size: 28px; font-weight: 700;
+    letter-spacing: 0.02em; margin-bottom: 8px;
+    position: relative; z-index: 1;
+  }
+  .header .subtitle {
+    font-size: 13px; color: var(--text-secondary);
+    letter-spacing: 0.04em; position: relative; z-index: 1;
+  }
+  .header .badge-row {
+    margin-top: 16px; display: flex; gap: 8px;
+    justify-content: center; flex-wrap: wrap;
+    position: relative; z-index: 1;
+  }
+  .badge {
+    font-size: 11px; padding: 4px 12px; border-radius: 100px;
+    font-weight: 500; letter-spacing: 0.03em;
+  }
+  .badge--team { background: var(--accent-dim); color: var(--accent); }
+  .badge--model { background: var(--blue-dim); color: var(--blue); }
+  .badge--date { background: var(--green-dim); color: var(--green); }
+
+  /* ── Container ── */
+  .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── Section ── */
+  .section { margin-top: 28px; }
+  .section-title {
+    font-size: 15px; font-weight: 600; letter-spacing: 0.03em;
+    margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-title .icon { font-size: 18px; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px 24px;
+    box-shadow: var(--shadow);
+  }
+  .card + .card { margin-top: 12px; }
+
+  /* ── Pricing Reference ── */
+  .pricing-grid {
+    display: grid; grid-template-columns: 1fr; gap: 12px;
+  }
+  .pricing-card {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px 20px; text-align: center;
+  }
+  .pricing-card--pro { border-color: rgba(192,103,60,0.25); background: rgba(192,103,60,0.03); }
+  .pricing-card .name { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+  .pricing-card--pro .name { color: var(--accent); }
+  .pricing-card .price-row {
+    display: flex; justify-content: center; gap: 24px;
+    font-size: 12px; color: var(--text-secondary);
+  }
+  .pricing-card .price-row span { font-weight: 600; color: var(--text); }
+  .pricing-card .discount {
+    font-size: 11px; color: var(--accent); margin-top: 6px;
+    font-weight: 500;
+  }
+
+  /* ── Tables ── */
+  table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+  }
+  th {
+    text-align: left; padding: 8px 12px; font-weight: 600;
+    color: var(--text-secondary); font-size: 11px;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    border-bottom: 2px solid var(--border);
+  }
+  td {
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; font-family: "SF Mono", "Fira Code", monospace; font-size: 12px; }
+  .cost { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .cost--pro { color: var(--accent); }
+
+  /* ── Config Panel ── */
+  .config-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .config-item label {
+    display: block; font-size: 11px; font-weight: 600;
+    color: var(--text-secondary); letter-spacing: 0.04em;
+    margin-bottom: 6px; text-transform: uppercase;
+  }
+  .config-item input, .config-item select {
+    width: 100%; padding: 8px 12px;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 14px; font-family: inherit;
+    background: var(--card); color: var(--text);
+    outline: none; transition: border-color 0.15s;
+  }
+  .config-item input:focus, .config-item select:focus {
+    border-color: var(--accent);
+  }
+  .config-item .hint {
+    font-size: 11px; color: var(--text-muted); margin-top: 4px;
+  }
+
+  /* ── Totals ── */
+  .total-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+  }
+  .total-card {
+    text-align: center; padding: 20px 16px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--card);
+  }
+  .total-card .label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase;
+  }
+  .total-card .value {
+    font-size: 28px; font-weight: 700; letter-spacing: 0.02em;
+  }
+  .total-card .sub {
+    font-size: 11px; color: var(--text-muted); margin-top: 4px;
+  }
+  .total-card--pro .value { color: var(--accent); }
+  .total-card--calls .value { color: var(--text); }
+
+  /* ── Scenario buttons ── */
+  .scenarios {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .scenario-btn {
+    padding: 8px 16px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); background: var(--card);
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    font-family: inherit; color: var(--text);
+    transition: all 0.15s;
+  }
+  .scenario-btn:hover { border-color: var(--accent); }
+  .scenario-btn.active {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
+
+  /* ── Tooltip ── */
+  .info-tip {
+    display: inline-flex; width: 16px; height: 16px;
+    border-radius: 50%; background: var(--border);
+    align-items: center; justify-content: center;
+    font-size: 10px; color: var(--text-muted);
+    cursor: help; font-weight: 700; margin-left: 4px;
+  }
+
+  /* ── Notes ── */
+  .notes {
+    font-size: 12px; color: var(--text-muted);
+    line-height: 1.8; margin-top: 20px;
+    padding: 16px 20px; background: rgba(0,0,0,0.02);
+    border-radius: var(--radius-sm); border: 1px dashed var(--border);
+  }
+  .notes strong { color: var(--text-secondary); }
+
+  /* ── Summary Banner ── */
+  .banner {
+    background: linear-gradient(135deg, rgba(192,103,60,0.08), rgba(192,103,60,0.04));
+    border: 1px solid rgba(192,103,60,0.2);
+    border-radius: var(--radius); padding: 20px 24px;
+    margin-top: 28px; text-align: center;
+  }
+  .banner .big-number {
+    font-size: 36px; font-weight: 700; letter-spacing: 0.02em;
+    color: var(--accent);
+  }
+  .banner .big-label {
+    font-size: 12px; color: var(--text-secondary);
+    letter-spacing: 0.04em; margin-top: 4px;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    .pricing-grid, .total-grid { grid-template-columns: 1fr; }
+    .config-grid { grid-template-columns: 1fr; }
+    table { font-size: 11px; }
+    th, td { padding: 6px 8px; }
+    .header h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<div class="header">
+  <h1>AI Token 预算计算器</h1>
+  <div class="subtitle">方案骨架生成器 + 创意方案生成器 · 30人团队分发</div>
+  <div class="badge-row">
+    <span class="badge badge--team">👥 30人团队</span>
+    <span class="badge badge--model">DeepSeek API</span>
+    <span class="badge badge--date">2026年6月定价</span>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ═══════════ PRICING ═══════════ -->
+<div class="section">
+  <div class="section-title"><span class="icon">💰</span> API 定价基准</div>
+  <div class="pricing-grid">
+    <div class="pricing-card pricing-card--pro">
+      <div class="name">DeepSeek V4 Pro</div>
+      <div class="price-row">
+        <div>输入 <span>¥3</span>/百万token</div>
+        <div>输出 <span>¥6</span>/百万token</div>
+      </div>
+      <div class="discount">🔥 2.5折永久优惠（原价 ¥12/¥24）</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ TOOL 1: 方案骨架生成器 ═══════════ -->
+<div class="section">
+  <div class="section-title">
+    <span class="icon">🧱</span> 工具一：方案骨架生成器
+    <span style="font-weight:400;font-size:12px;color:var(--text-muted)">v1.3 · 每项目典型 4+2 次调用</span>
+  </div>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>功能</th>
+          <th>说明</th>
+          <th class="num">输入 token</th>
+          <th class="num">输出 token</th>
+          <th class="cost">费用（V4 Pro）</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span style="font-weight:600">✨ AI 润色</span></td>
+          <td style="color:var(--text-secondary);font-size:12px">方案骨架 → 叙事文案</td>
+          <td class="num">~800</td>
+          <td class="num">~1,000</td>
+          <td class="cost cost--pro">¥0.008</td>
+        </tr>
+        <tr>
+          <td><span style="font-weight:600">🧠 AI 脑暴</span></td>
+          <td style="color:var(--text-secondary);font-size:12px">变体方向 + 风险评估</td>
+          <td class="num">~1,000</td>
+          <td class="num">~1,500</td>
+          <td class="cost cost--pro">¥0.012</td>
+        </tr>
+        <tr>
+          <td><span style="font-weight:600">🔍 AI 诊断</span></td>
+          <td style="color:var(--text-secondary);font-size:12px">矛盾冲突 + 深层缺陷检测</td>
+          <td class="num">~1,200</td>
+          <td class="num">~2,000</td>
+          <td class="cost cost--pro">¥0.016</td>
+        </tr>
+        <tr>
+          <td><span style="font-weight:600">💼 AI 商业分析</span></td>
+          <td style="color:var(--text-secondary);font-size:12px">收入模型 + 平台匹配 + 投资判断</td>
+          <td class="num">~1,400</td>
+          <td class="num">~2,000</td>
+          <td class="cost cost--pro">¥0.016</td>
+        </tr>
+        <tr>
+          <td><span style="font-weight:600">💬 追问对话</span></td>
+          <td style="color:var(--text-secondary);font-size:12px">每项目平均 2 轮追问</td>
+          <td class="num">~1,500</td>
+          <td class="num">~1,000</td>
+          <td class="cost cost--pro">¥0.011</td>
+        </tr>
+        <tr style="background:rgba(192,103,60,0.03)">
+          <td colspan="2"><strong>🔹 每项目合计（4核心 + 2追问）</strong></td>
+          <td class="num"><strong>~7,500</strong></td>
+          <td class="num"><strong>~8,500</strong></td>
+          <td class="cost cost--pro" style="font-size:15px"><strong>¥0.074</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════ TOOL 2: 创意方案生成器 ═══════════ -->
+<div class="section">
+  <div class="section-title">
+    <span class="icon">🎨</span> 工具二：创意方案生成器
+    <span style="font-weight:400;font-size:12px;color:var(--text-muted)">v2.3 · 三档颗粒度 + 修改模式</span>
+  </div>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>颗粒度</th>
+          <th>适用场景</th>
+          <th class="num">输入 token</th>
+          <th class="num">输出 token</th>
+          <th class="cost">费用（V4 Pro）</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span style="font-weight:600">🟢 极简核</span></td>
+          <td style="color:var(--text-secondary);font-size:12px">快速验证想法，一段话讲清核心张力</td>
+          <td class="num">~1,000</td>
+          <td class="num">~1,000</td>
+          <td class="cost cost--pro">¥0.009</td>
+        </tr>
+        <tr>
+          <td><span style="font-weight:600">🟡 标准一页纸</span></td>
+          <td style="color:var(--text-secondary);font-size:12px">完整创意方案（推荐日常使用）</td>
+          <td class="num">~1,500</td>
+          <td class="num">~2,500</td>
+          <td class="cost cost--pro">¥0.020</td>
+        </tr>
+        <tr>
+          <td><span style="font-weight:600">🔴 展开版</span></td>
+          <td style="color:var(--text-secondary);font-size:12px">深度方案，含情绪深描、人物弧线、话题体系</td>
+          <td class="num">~2,200</td>
+          <td class="num">~3,500</td>
+          <td class="cost cost--pro">¥0.028</td>
+        </tr>
+        <tr>
+          <td><span style="font-weight:600">✏️ 修改模式</span></td>
+          <td style="color:var(--text-secondary);font-size:12px">对已有方案进行定向修改</td>
+          <td class="num">~3,000</td>
+          <td class="num">~2,000</td>
+          <td class="cost cost--pro">¥0.021</td>
+        </tr>
+        <tr style="background:rgba(192,103,60,0.03)">
+          <td colspan="2"><strong>🔹 每次生成（标准一页纸 + 1次修改）</strong></td>
+          <td class="num"><strong>~4,500</strong></td>
+          <td class="num"><strong>~4,500</strong></td>
+          <td class="cost cost--pro" style="font-size:15px"><strong>¥0.041</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════ TOOL 0: 分流页 ═══════════ -->
+<div class="section">
+  <div class="section-title"><span class="icon">🏠</span> 工具零：分流页（index.html）</div>
+  <div class="card" style="text-align:center;padding:16px 24px;color:var(--text-muted);font-size:13px">
+    纯静态导航页，无 API 调用 —— <strong style="color:var(--green)">¥0.00</strong>
+  </div>
+</div>
+
+<!-- ═══════════ CONFIGURATION ═══════════ -->
+<div class="section">
+  <div class="section-title"><span class="icon">⚙️</span> 团队使用参数</div>
+  <div class="card">
+    <div class="scenarios" style="margin-bottom:16px">
+      <span style="font-size:11px;font-weight:600;color:var(--text-secondary);letter-spacing:0.04em;margin-right:8px;line-height:32px">预设场景：</span>
+      <button class="scenario-btn" onclick="applyScenario('light')">🍃 轻度使用</button>
+      <button class="scenario-btn active" onclick="applyScenario('medium')">📋 中度使用</button>
+      <button class="scenario-btn" onclick="applyScenario('heavy')">🔥 重度使用</button>
+    </div>
+
+    <div class="config-grid">
+      <div class="config-item">
+        <label>👥 团队人数</label>
+        <input type="number" id="headcount" value="30" min="1" max="500" oninput="recalc()">
+        <div class="hint">实际使用工具的员工数</div>
+      </div>
+      <div class="config-item">
+        <label>🧱 骨架生成器 · 项目/人/天</label>
+        <input type="number" id="skeletonPerDay" value="1" min="0" max="20" step="0.5" oninput="recalc()">
+        <div class="hint">每人每天用骨架生成器做几个项目</div>
+      </div>
+      <div class="config-item">
+        <label>🎨 创意生成器 · 方案/人/天</label>
+        <input type="number" id="creativePerDay" value="2" min="0" max="20" step="0.5" oninput="recalc()">
+        <div class="hint">每人每天生成几个方案（标准一页纸）</div>
+      </div>
+      <div class="config-item">
+        <label>📅 月工作天数</label>
+        <input type="number" id="workDays" value="22" min="1" max="31" oninput="recalc()">
+        <div class="hint">每月实际使用工具的天数</div>
+      </div>
+      <div class="config-item">
+        <label>📦 计算月数</label>
+        <input type="number" id="calcMonths" value="1" min="1" max="36" oninput="recalc()">
+        <div class="hint">合并计算多少个月的总费用</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ RESULTS ═══════════ -->
+<div class="section">
+  <div class="section-title"><span class="icon">📊</span> 预算测算</div>
+
+  <div class="total-grid" style="margin-bottom:12px">
+    <div class="total-card total-card--calls">
+      <div class="label">📞 月调用总量</div>
+      <div class="value" id="totalCalls">—</div>
+      <div class="sub">骨架 <span id="callsSkeleton">—</span> + 创意 <span id="callsCreative">—</span></div>
+    </div>
+    <div class="total-card total-card--pro">
+      <div class="label">💎 月度费用（V4 Pro）</div>
+      <div class="value" id="costPro">—</div>
+      <div class="sub">日均 <span id="costProDaily">—</span></div>
+    </div>
+  </div>
+
+  <div class="total-grid" style="margin-bottom:12px;grid-template-columns:1fr">
+    <div class="total-card" style="border-color:rgba(192,103,60,0.4);background:rgba(192,103,60,0.04)">
+      <div class="label">📦 <span id="monthLabel">1</span> 个月合计</div>
+      <div class="value" style="font-size:32px;color:var(--accent)" id="costMultiMonth">—</div>
+    </div>
+  </div>
+
+  <div class="total-grid">
+    <div class="total-card" style="border-color:rgba(192,103,60,0.3);background:rgba(192,103,60,0.02)">
+      <div class="label">📆 季度预算</div>
+      <div class="value" style="font-size:22px;color:var(--accent)" id="costQuarter">—</div>
+    </div>
+    <div class="total-card" style="border-color:rgba(192,103,60,0.3);background:rgba(192,103,60,0.02)">
+      <div class="label">📅 年度预算</div>
+      <div class="value" style="font-size:22px;color:var(--accent)" id="costYear">—</div>
+    </div>
+    <div class="total-card" style="border-color:rgba(192,103,60,0.3);background:rgba(192,103,60,0.02)">
+      <div class="label">👤 人均月费</div>
+      <div class="value" style="font-size:22px;color:var(--accent)" id="costPerPerson">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SUMMARY BANNER ═══════════ -->
+<div class="banner">
+  <div class="big-label">推荐预算（V4 Pro）</div>
+  <div class="big-number" id="bannerCost">—</div>
+  <div class="big-label">/ 月 · <span id="bannerHeadcount">30</span>人团队</div>
+  <div style="margin-top:12px;font-size:13px;color:var(--text-secondary)">
+    DeepSeek V4 Pro 2.5折永久优惠，单项目成本 ¥0.074（骨架）+ ¥0.041（创意）
+  </div>
+</div>
+
+<!-- ═══════════ NOTES ═══════════ -->
+<div class="section">
+  <div class="section-title"><span class="icon">📝</span> 说明与假设</div>
+  <div class="notes">
+    <p><strong>估算方法</strong>：基于工具代码中的实际系统提示词长度 + max_tokens=4096 上限，取典型场景下的平均 token 消耗。中文约 1.5-2 字符/token。</p>
+    <p style="margin-top:8px"><strong>实际波动</strong>：</p>
+    <ul style="margin:4px 0 0 16px">
+      <li>追问对话轮数影响最大 —— 每多一轮追加 ~¥0.01</li>
+      <li>创意方案生成器选「展开版」比「极简核」贵 3 倍</li>
+      <li>缓存命中可大幅降低输入成本（命中后输入近乎免费）</li>
+      <li>以上为 V4 Pro 2.5折优惠价，如优惠调整需重新计算</li>
+    </ul>
+    <p style="margin-top:8px"><strong>不包括</strong>：分流页（无 API）、NAS 部署服务器成本、Cloudflare Tunnel 费用。</p>
+    <p style="margin-top:8px"><strong>更新日期</strong>：2026-06-16 · 基于 <a href="https://api-docs.deepseek.com/zh-cn/quick_start/pricing" target="_blank" style="color:var(--blue)">DeepSeek 官方定价</a></p>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+// ═══════════════════════════════════
+// COST MODEL（仅 V4 Pro）
+// ═══════════════════════════════════
+
+// Per-call estimates (input tokens, output tokens)
+const SKELETON_COST = {
+  polish:     { in: 800,  out: 1000 },  // AI 润色
+  brainstorm: { in: 1000, out: 1500 },  // AI 脑暴
+  diagnose:   { in: 1200, out: 2000 },  // AI 诊断
+  business:   { in: 1400, out: 2000 },  // AI 商业分析
+  followup:   { in: 1500, out: 1000 },  // 追问（每轮）
+};
+
+const CREATIVE_COST = {
+  minimal:  { in: 1000, out: 1000 },  // 极简核
+  standard: { in: 1500, out: 2500 },  // 标准一页纸
+  expanded: { in: 2200, out: 3500 },  // 展开版
+  modify:   { in: 3000, out: 2000 },  // 修改模式
+};
+
+// V4 Pro pricing per 1M tokens
+const PIN = 3, POUT = 6;
+
+function costPerCall(tokensIn, tokensOut) {
+  return (PIN * tokensIn + POUT * tokensOut) / 1_000_000;
+}
+
+function skeletonProjectCost() {
+  let total = 0;
+  total += costPerCall(SKELETON_COST.polish.in, SKELETON_COST.polish.out);
+  total += costPerCall(SKELETON_COST.brainstorm.in, SKELETON_COST.brainstorm.out);
+  total += costPerCall(SKELETON_COST.diagnose.in, SKELETON_COST.diagnose.out);
+  total += costPerCall(SKELETON_COST.business.in, SKELETON_COST.business.out);
+  total += 2 * costPerCall(SKELETON_COST.followup.in, SKELETON_COST.followup.out);
+  return total;
+}
+
+function creativeDocCost() {
+  // Standard + 1 modify
+  let total = 0;
+  total += costPerCall(CREATIVE_COST.standard.in, CREATIVE_COST.standard.out);
+  total += costPerCall(CREATIVE_COST.modify.in, CREATIVE_COST.modify.out);
+  return total;
+}
+
+// ═══════════════════════════════════
+// UI LOGIC
+// ═══════════════════════════════════
+
+function formatMoney(n) {
+  if (n < 0.01) return '¥' + n.toFixed(3);
+  if (n < 1) return '¥' + n.toFixed(2);
+  if (n < 1000) return '¥' + Math.round(n);
+  return '¥' + (n / 1000).toFixed(1) + 'K';
+}
+
+function formatCalls(n) {
+  if (n < 1000) return Math.round(n).toLocaleString();
+  return (n / 1000).toFixed(1) + 'K';
+}
+
+function recalc() {
+  const headcount = parseInt(document.getElementById('headcount').value) || 30;
+  const skeletonPerDay = parseFloat(document.getElementById('skeletonPerDay').value) || 1;
+  const creativePerDay = parseFloat(document.getElementById('creativePerDay').value) || 2;
+  const workDays = parseInt(document.getElementById('workDays').value) || 22;
+  const calcMonths = parseInt(document.getElementById('calcMonths').value) || 1;
+
+  // Calls per month
+  const skeletonCallsPerDay = headcount * skeletonPerDay * 6;
+  const creativeCallsPerDay = headcount * creativePerDay * 2;
+  const skeletonMonthly = skeletonCallsPerDay * workDays;
+  const creativeMonthly = creativeCallsPerDay * workDays;
+  const totalCallsMonthly = skeletonMonthly + creativeMonthly;
+
+  // Projects/docs per month
+  const skeletonProjectsMonthly = headcount * skeletonPerDay * workDays;
+  const creativeDocsMonthly = headcount * creativePerDay * workDays;
+
+  const costMonthly = skeletonProjectsMonthly * skeletonProjectCost() +
+                      creativeDocsMonthly * creativeDocCost();
+
+  // Multi-month totals
+  const costMultiMonth = costMonthly * calcMonths;
+  const callsMultiMonth = totalCallsMonthly * calcMonths;
+
+  // Update UI
+  document.getElementById('totalCalls').textContent = formatCalls(totalCallsMonthly);
+  document.getElementById('callsSkeleton').textContent = formatCalls(skeletonMonthly);
+  document.getElementById('callsCreative').textContent = formatCalls(creativeMonthly);
+
+  document.getElementById('costPro').textContent = formatMoney(costMonthly);
+  document.getElementById('costProDaily').textContent = formatMoney(costMonthly / workDays);
+
+  document.getElementById('monthLabel').textContent = calcMonths;
+  document.getElementById('costMultiMonth').textContent = formatMoney(costMultiMonth);
+
+  document.getElementById('costQuarter').textContent = formatMoney(costMonthly * 3);
+  document.getElementById('costYear').textContent = formatMoney(costMonthly * 12);
+  document.getElementById('costPerPerson').textContent = formatMoney(costMonthly / headcount);
+
+  document.getElementById('bannerCost').textContent = formatMoney(costMonthly);
+  document.getElementById('bannerHeadcount').textContent = headcount;
+}
+
+function applyScenario(scenario) {
+  document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  switch(scenario) {
+    case 'light':
+      document.getElementById('skeletonPerDay').value = 0.5;
+      document.getElementById('creativePerDay').value = 1;
+      break;
+    case 'medium':
+      document.getElementById('skeletonPerDay').value = 1;
+      document.getElementById('creativePerDay').value = 2;
+      break;
+    case 'heavy':
+      document.getElementById('skeletonPerDay').value = 3;
+      document.getElementById('creativePerDay').value = 5;
+      break;
+  }
+  recalc();
+}
+
+// Init
+recalc();
+</script>
+
+</body>
+</html>
