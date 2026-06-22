@@ -1,6 +1,7 @@
-# Ignore everything except HTML and change records
+# Ignore everything except HTML, Python scripts, and change records
 *
 !*.html
+!*.py
 !README.md
 !.gitignore
 !变更记录/
