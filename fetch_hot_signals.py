@@ -12,8 +12,8 @@ try:
     import requests
     HAS_REQUESTS = True
 except ImportError:
-    import urllib.request, urllib.error
     HAS_REQUESTS = False
+    raise RuntimeError('requests library is required. Install: pip install requests')
 
 # ── Paths ────────────────────────────────────────────────
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -26,12 +26,14 @@ DRY_RUN = '--dry-run' in sys.argv
 
 
 def _parse_iso(ts_str: str) -> datetime:
-    """Parse ISO timestamp, Python 3.8 compatible (handles +08:00 format)."""
+    """Parse ISO timestamp, compatible with Python 3.8+ including +08:00 format."""
+    if not ts_str:
+        return datetime(2000, 1, 1)
     try:
         return datetime.fromisoformat(ts_str)
     except (ValueError, TypeError):
-        # Python 3.8 can't parse +08:00 colon format
-        clean = re.sub(r'([+-]\d{2}):(\d{2})$', r'\1\2', ts_str)
+        # Python 3.8-3.10 polyfill: strip timezone colon (+08:00 → +0800)
+        clean = re.sub(r'([+-]\d{2}):(\d{2})$', r'\1\2', str(ts_str))
         return datetime.fromisoformat(clean)
 
 # ── Logging ──────────────────────────────────────────────

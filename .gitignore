@@ -8,3 +8,8 @@
 !变更记录/*.md
 !版本归档/
 !版本归档/**/*
+proxy.py
+.env
+signal_feed.json
+logs/
+.DS_Store
