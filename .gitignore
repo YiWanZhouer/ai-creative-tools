@@ -1,12 +1,13 @@
-# Ignore everything except HTML and change records
+# Ignore everything except HTML, JS, deploy files, and change records
 *
 !*.html
 !*.js
+!SKILL-*.md
 !README.md
 !CLAUDE.md
 !.gitignore
-!变更记录/
-!变更记录/*.md
 !deploy.sh
 !deploy/
 !deploy/**
+!变更记录/
+!变更记录/*.md

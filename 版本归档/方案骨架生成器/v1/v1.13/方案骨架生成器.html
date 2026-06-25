@@ -1,0 +1,3949 @@
+<!-- ═══════════════════════════════════
+  方案骨架生成器 · v1.13
+  变更: 信号/韩综卡片点击自动填充对应元素
+  日期: 2026-06-19
+  ═══════════════════════════════════ -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>方案骨架生成器</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    /* ══════ 真纸底色 ══════ */
+    /* 暖奶油纸 — 像在无酸纸上写字，而非屏幕 */
+    --bg: #ede6dd;
+    --card: #fdfaf6;
+    --border: #ddd4c8;
+    --border-hover: #c4b9ab;
+    --text: #1f1d1b;
+    --text-muted: #59534d;
+
+    /* ══════ 纸上淡彩 ══════ */
+    /* 四色同调：S=36-42%, L=44-48%。像水彩在纸上晕开 */
+    --accent: #4684a4;
+    --accent-dim: #e0e8ee;
+    --selected: #459a77;
+    --selected-dim: #e0ece6;
+    --dominant: #ad6246;
+    --dominant-dim: #ece1dc;
+    --auxiliary: #a64e73;
+    --auxiliary-dim: #ece0e5;
+
+    --radius: 12px;
+    --radius-sm: 8px;
+    --transition: 150ms ease;
+  }
+
+  body {
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.75;
+  }
+
+  /* ── Top Bar ── */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: #f5f0ebee; backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex; align-items: center; gap: 12px;
+    flex-wrap: wrap;
+  }
+  .topbar .logo {
+    font-size: 1.25rem; font-weight: 700; letter-spacing: 0.02em;
+    color: var(--text); margin-right: auto;
+  }
+  .topbar .logo span { color: var(--accent); }
+
+	  .topbar__version {
+	    font-size: 0.6875rem; color: var(--text-muted); font-weight: 500;
+	    letter-spacing: 0.04em; font-family: "SF Mono", "Fira Code", monospace;
+	    padding: 2px 8px; border: 1px solid var(--border); border-radius: 100px;
+	    white-space: nowrap;
+	  }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 18px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--card); color: var(--text); font-size: 0.875rem; font-weight: 500;
+    cursor: pointer; transition: all var(--transition);
+    white-space: nowrap; font-family: inherit;
+  }
+  .btn:hover { border-color: var(--border-hover); background: #2f2c28; }
+  .btn--primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+  .btn--primary:hover { background: #93c5fd; }
+  .btn--ghost { background: transparent; border-color: transparent; }
+  .btn--ghost:hover { background: #00000005; }
+  .btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  select.btn {
+    appearance: none; -webkit-appearance: none;
+    padding-right: 36px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+  }
+
+  /* ── Main Layout ── */
+  .container {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+
+  /* ── Grid ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    transition: all var(--transition);
+  }
+  .card:hover {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+  .card__header {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin-bottom: 14px;
+  }
+  .card__emoji { font-size: 1.5rem; line-height: 1; flex-shrink: 0; }
+  .card__title {
+    font-size: 1rem; font-weight: 700; color: var(--text);
+    line-height: 1.4;
+  }
+  .card__subtitle { font-size: 0.8125rem; color: var(--text-muted); margin-top: 2px; }
+  .card__hint {
+    font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;
+    font-style: italic;
+  }
+
+  /* ── Chips ── */
+  .chip-row {
+    display: flex; flex-wrap: wrap; gap: 8px;
+  }
+  .chip-row + .chip-row { margin-top: 8px; }
+  .chip-row__label {
+    font-size: 0.75rem; color: var(--text-muted); font-weight: 600;
+    letter-spacing: 0.03em; text-transform: uppercase;
+    width: 100%; margin-bottom: -2px;
+  }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 6px 12px;
+    border: 1px solid var(--border); border-radius: 100px;
+    font-size: 0.875rem; color: var(--text-muted); font-weight: 500;
+    cursor: pointer; transition: all var(--transition);
+    user-select: none; background: transparent;
+    font-family: inherit; line-height: 1.5;
+  }
+  .chip:hover { border-color: var(--border-hover); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .chip:active { transform: scale(0.96); }
+
+  /* Selected state */
+  .chip--selected {
+    background: var(--selected-dim); border-color: var(--selected); color: var(--selected);
+  }
+  /* Dominant */
+  .chip--dominant {
+    background: var(--dominant-dim); border-color: var(--dominant); color: var(--dominant);
+  }
+  /* Auxiliary */
+  .chip--auxiliary {
+    background: var(--auxiliary-dim); border-color: var(--auxiliary); color: var(--auxiliary);
+  }
+
+  .chip .badge {
+    width: 6px; height: 6px; border-radius: 50%;
+    display: inline-block; flex-shrink: 0;
+  }
+  .chip--dominant .badge { background: var(--dominant); }
+  .chip--auxiliary .badge { background: var(--auxiliary); }
+  .chip--selected .badge { background: var(--selected); }
+
+  /* ── Detail Popover ── */
+  #detail-popover {
+    position: fixed;
+    z-index: 300;
+    width: 300px;
+    max-width: calc(100vw - 32px);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 150ms ease, transform 150ms ease;
+  }
+  #detail-popover.detail-popover--visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: none;
+  }
+  #detail-popover .popover__header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  #detail-popover .popover__id {
+    font-size: 0.6875rem; font-weight: 700; color: var(--accent);
+    font-family: "SF Mono", "Fira Code", monospace;
+    letter-spacing: 0.04em;
+  }
+  #detail-popover .popover__label {
+    font-size: 1rem; font-weight: 700; color: var(--text);
+  }
+  #detail-popover .popover__desc {
+    font-size: 0.6875rem; color: var(--text-muted); margin-bottom: 10px;
+  }
+  #detail-popover .popover__body {
+    font-size: 0.875rem; color: var(--text); line-height: 1.7;
+  }
+
+  /* ── Output Panel ── */
+  .output {
+    margin-top: 32px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .output--visible { display: block; animation: slideIn 300ms ease; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .output__header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 20px 24px; border-bottom: 1px solid var(--border);
+    flex-wrap: wrap; background: #fdf9f4;
+  }
+  .output__title {
+    flex: 1; min-width: 200px; font-size: 1.25rem; font-weight: 700; color: var(--text);
+    background: transparent; border: none; outline: none;
+    font-family: inherit;
+  }
+  .output__title:focus { color: var(--accent); }
+  .output__body {
+    padding: 24px;
+    font-size: 1rem; line-height: 1.8;
+  }
+  .output__body h3 {
+    font-size: 0.8125rem; font-weight: 700; color: var(--accent);
+    letter-spacing: 0.02em; text-transform: uppercase;
+    margin: 20px 0 8px;
+  }
+  .output__body h3:first-child { margin-top: 0; }
+  .output__block {
+    color: var(--text); padding: 4px 0;
+  }
+  .output__block .el { color: var(--selected); font-weight: 600; }
+  .output__block .el--dominant { color: var(--dominant); font-weight: 600; }
+  .output__block .el--auxiliary { color: var(--auxiliary); font-weight: 600; }
+  .output__desc {
+    margin-top: 20px; padding: 16px; border-left: 3px solid var(--accent);
+    background: #00000005; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--text); font-size: 0.9375rem; line-height: 1.7;
+  }
+
+  .output__formula {
+    margin-top: 20px; padding: 16px;
+    background: #f0eae1; border-radius: var(--radius-sm); border: 1px solid #e5dcd0;
+    font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+    font-size: 0.875rem; color: var(--text); line-height: 1.7;
+    white-space: pre-wrap; word-break: break-all;
+  }
+
+  /* ── Causal, Boundary, Market ── */
+  .output__causal {
+    margin-top: 12px;
+  }
+  .output__causal details {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .output__causal summary {
+    cursor: pointer; padding: 10px 16px;
+    font-size: 0.875rem; font-weight: 700; color: var(--text);
+    background: #fdf9f4; user-select: none;
+    transition: background var(--transition);
+  }
+  .output__causal summary:hover { background: #faf5ed; }
+
+  .output__boundary {
+    margin-top: 8px;
+  }
+
+  .output__market {
+    margin-top: 8px;
+  }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+    background: var(--selected); color: #fff; font-weight: 600;
+    padding: 10px 24px; border-radius: 100px; font-size: 0.875rem;
+    z-index: 200; opacity: 0; pointer-events: none;
+    transition: opacity 200ms ease;
+  }
+  .toast--show { opacity: 1; }
+
+  /* ── Layer dividers ── */
+  .layer-divider {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: 10px;
+    margin: 8px 0 4px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .layer-divider:first-child { margin-top: 0; }
+  .layer-badge {
+    font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em;
+    padding: 3px 10px; border-radius: 100px;
+    background: var(--accent-dim); color: var(--accent);
+  }
+  .layer-desc {
+    font-size: 0.8125rem; color: var(--text-muted);
+  }
+
+  /* ── Card locked state ── */
+  .card--locked { opacity: 0.45; }
+  .card--locked .chip { pointer-events: none; }
+  /* ── Signal Panel ── */
+  .signal-panel {
+    max-width: 1440px; margin: 0 auto 16px; padding: 0 24px;
+  }
+  .signal-panel__header {
+    font-size: 0.8125rem; font-weight: 600; color: var(--text);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px; background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  }
+  .signal-panel__genre-tag {
+    font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em;
+    padding: 2px 8px; border-radius: 100px;
+    background: var(--accent-dim); color: var(--accent);
+    margin-left: auto;
+  }
+  .signal-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px; padding: 12px 16px; background: var(--card);
+    border: 1px solid var(--border); border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  }
+  .signal-card {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px;
+  }
+  .signal-card__channel {
+    font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em;
+    color: var(--dominant);
+  }
+  .signal-card__topic {
+    font-size: 0.9375rem; font-weight: 700; color: var(--text); margin: 4px 0;
+  }
+  .signal-card__source {
+    font-size: 0.75rem; color: var(--text-muted);
+  }
+  .signal-card__angle {
+    font-size: 0.8125rem; color: var(--selected);
+    margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border);
+  }
+
+  /* ── Signal toggle button ── */
+  .btn--signal {
+    font-size: 0.75rem; padding: 4px 10px; margin-left: 8px;
+  }
+  /* ── Anti-Pattern Cases ── */
+  .anti-case {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 16px; margin-bottom: 12px;
+  }
+  .anti-case__header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  }
+  .anti-case__badge {
+    font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em;
+    padding: 2px 8px; border-radius: 100px;
+    background: var(--dominant-dim); color: var(--dominant);
+    white-space: nowrap;
+  }
+  .anti-case__name { font-size: 0.9375rem; font-weight: 700; }
+  .anti-case__rule {
+    font-size: 0.875rem; color: var(--text-muted); margin-bottom: 8px;
+    padding-left: 16px; border-left: 2px solid var(--accent);
+  }
+  .anti-case__conditions { font-size: 0.8125rem; color: var(--text); margin-bottom: 6px; }
+  .anti-case__conditions li { margin-bottom: 3px; }
+  .anti-case__attribution {
+    font-size: 0.875rem; color: var(--text); font-weight: 500;
+    background: var(--accent-dim); padding: 8px 12px; border-radius: 6px;
+    margin: 8px 0;
+  }
+  .anti-case__reusable {
+    font-size: 0.8125rem; color: var(--selected); margin-top: 6px;
+  }
+  .anti-case__not-reusable {
+    font-size: 0.8125rem; color: var(--auxiliary); margin-top: 2px;
+  }
+
+  /* ── Suggested chip highlight ── */
+  .chip--suggested {
+    border: 1.5px dashed var(--accent);
+    background: var(--accent-dim);
+  }
+
+  /* ── Backtrack banner ── */
+  #backtrackBanner {
+    display: none;
+    text-align: center; padding: 10px;
+    background: #fef3c7; color: #92400e; font-size: 0.8125rem;
+    border-bottom: 1px solid #fcd34d;
+  }
+  #backtrackBanner.show { display: block; }
+
+  /* ── New: Pitch, Journey, Highlights ── */
+  .output__pitch {
+    margin-top: 16px; padding: 20px;
+    background: linear-gradient(135deg, #faf6f0 0%, #fdf9f4 40%, var(--card) 100%);
+    border-radius: var(--radius);
+    font-size: 1rem; line-height: 1.9; color: var(--text);
+    border: 1px solid #e5dcd0;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+  }
+  .output__pitch strong { color: var(--accent); }
+  .output__pitch p { margin: 0 0 0.8em; }
+  .output__pitch p:last-child { margin-bottom: 0; }
+
+  .output__journey {
+    margin-top: 16px; padding: 20px;
+    background: #faf7f3; border-radius: var(--radius);
+    font-size: 1rem; line-height: 1.8; color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .output__highlights {
+    margin-top: 16px; display: flex; flex-direction: column; gap: 8px;
+  }
+
+  .output details {
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .output details > div { padding: 12px 16px; }
+  .output summary {
+    cursor: pointer; padding: 10px 16px;
+    font-size: 0.8125rem; font-weight: 700; color: var(--text-muted);
+    letter-spacing: 0.02em; text-transform: uppercase;
+    background: #00000004; user-select: none;
+    transition: background var(--transition);
+  }
+  .output summary:hover { background: #00000005; }
+
+  /* ── Empty State ── */
+  .empty-hint {
+    text-align: center; color: var(--text-muted); padding: 60px 20px;
+  }
+  .empty-hint p { font-size: 1rem; }
+  .empty-hint .emoji { font-size: 2rem; display: block; margin-bottom: 12px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 1200px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+	    .ai-actions { width: 100%; margin-left: 0; justify-content: flex-end; }
+	    .ai-actions .btn--ai { font-size: 0.75rem; padding: 6px 10px; }
+	    .output__header { flex-wrap: wrap; }
+    .grid { grid-template-columns: 1fr; }
+    .topbar { padding: 12px 16px; gap: 8px; }
+    .topbar .logo { width: 100%; }
+    .btn { padding: 8px 14px; font-size: 0.8125rem; }
+    .container { padding: 16px; }
+    .output__header { padding: 16px; }
+    .output__body { padding: 16px; }
+  }
+
+	  /* ── Settings Modal ── */
+	  .modal-overlay {
+	    position: fixed; inset: 0; z-index: 400;
+	    background: rgba(0,0,0,0.3); backdrop-filter: blur(4px);
+	    display: none; align-items: center; justify-content: center;
+	  }
+	  .modal-overlay--visible { display: flex; }
+	  .modal {
+	    background: var(--card); border: 1px solid var(--border);
+	    border-radius: var(--radius); padding: 28px;
+	    width: 420px; max-width: calc(100vw - 32px);
+	    box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 8px 48px rgba(0,0,0,0.06);
+	    animation: modalIn 200ms ease;
+	  }
+	  @keyframes modalIn {
+	    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+	    to { opacity: 1; transform: translateY(0) scale(1); }
+	  }
+	  .modal__title {
+	    font-size: 1.125rem; font-weight: 700; color: var(--text);
+	    margin-bottom: 6px;
+	  }
+	  .modal__desc {
+	    font-size: 0.875rem; color: var(--text-muted); margin-bottom: 20px;
+	    line-height: 1.6;
+	  }
+	  .modal__desc a { color: var(--accent); }
+	  .modal__field { margin-bottom: 16px; }
+	  .modal__field label {
+	    display: block; font-size: 0.75rem; font-weight: 600;
+	    color: var(--text-muted); margin-bottom: 6px;
+	    letter-spacing: 0.03em; text-transform: uppercase;
+	  }
+	  .modal__input-row { display: flex; gap: 8px; }
+	  .modal__input-row input {
+	    flex: 1; padding: 10px 14px;
+	    background: #f5f2ed; border: 1px solid var(--border);
+	    border-radius: var(--radius-sm); color: var(--text);
+	    font-size: 0.875rem; font-family: "SF Mono", "Fira Code", monospace;
+	    outline: none; transition: border-color var(--transition);
+	  }
+	  .modal__input-row input:focus { border-color: var(--accent); }
+	  .modal__input-row .btn { flex-shrink: 0; }
+	  .modal__status { font-size: 0.8125rem; margin-top: 8px; font-weight: 500; }
+	  .modal__status--ok { color: var(--selected); }
+	  .modal__status--warn { color: var(--dominant); }
+	  .modal__actions { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+
+	  /* ── AI Action Buttons ── */
+	  .ai-actions { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+	  .btn--ai {
+	    position: relative;
+	    border: 1px solid var(--border); background: #00000004;
+	    color: var(--text-muted); font-size: 0.8125rem;
+	  }
+	  .btn--ai:hover { border-color: var(--accent-dim); color: var(--accent); background: #00000005; }
+	  .btn--ai:disabled { opacity: 0.5; cursor: not-allowed; }
+
+	  @keyframes spin { to { transform: rotate(360deg); } }
+	  .spinner {
+	    display: inline-block; width: 14px; height: 14px;
+	    border: 2px solid var(--text-muted); border-top-color: var(--accent);
+	    border-radius: 50%; animation: spin 0.6s linear infinite;
+	    flex-shrink: 0;
+	  }
+
+	  /* ── AI Result Block ── */
+	  .ai-results { margin-top: 20px; }
+	  .ai-result {
+	    border: 1px solid var(--border); border-radius: var(--radius-sm);
+	    overflow: hidden; margin-bottom: 12px;
+	  }
+	  .ai-result summary {
+	    cursor: pointer; padding: 10px 16px;
+	    font-size: 0.8125rem; font-weight: 700;
+	    color: var(--text-muted); background: #00000004;
+	    user-select: none; transition: background var(--transition);
+	    display: flex; align-items: center; gap: 8px;
+	  }
+	  .ai-result summary:hover { background: #00000005; }
+	  .ai-badge {
+	    font-size: 0.625rem; font-weight: 700; color: var(--selected);
+	    background: var(--selected-dim); padding: 2px 6px;
+	    border-radius: 100px; letter-spacing: 0.03em;
+	  }
+	  .ai-result__body {
+	    padding: 16px; font-size: 1rem; line-height: 1.8; color: var(--text);
+	    max-height: 500px; overflow-y: auto;
+	  }
+	  .ai-result__body p { margin: 0 0 0.8em; }
+	  .ai-result__body p:last-child { margin-bottom: 0; }
+	  .ai-result__body strong { color: var(--accent); }
+	  .ai-result__body ul, .ai-result__body ol { margin: 8px 0; padding-left: 20px; }
+	  .ai-result__body li { margin-bottom: 4px; }
+	  .ai-result__body h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin: 16px 0 8px; }
+	  .ai-result__body h4 { font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); margin: 12px 0 6px; letter-spacing: 0.03em; text-transform: uppercase; }
+	  .ai-result__body code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font-family: "SF Mono", "Fira Code", monospace; font-size: 0.8125rem; }
+	  .ai-result__body blockquote { border-left: 3px solid var(--border); margin: 8px 0; padding: 4px 12px; color: var(--text-muted); font-style: italic; }
+.ai-followup {
+	    border-top: 1px solid var(--border); margin-top: 14px; padding-top: 14px;
+	  }
+	  .ai-followup__thread { margin-bottom: 12px; max-height: 400px; overflow-y: auto; }
+	  .ai-followup__msg {
+	    padding: 8px 12px; border-radius: var(--radius-sm); margin-bottom: 8px;
+	    font-size: 0.875rem; line-height: 1.7;
+	  }
+	  .ai-followup__msg--user {
+	    background: #00000004; color: var(--text-muted);
+	    border-left: 3px solid var(--accent-dim);
+	  }
+	  .ai-followup__msg--user::before {
+	    content: '💬 你：'; font-weight: 700; color: var(--accent);
+	    display: block; margin-bottom: 4px; font-size: 0.6875rem;
+	  }
+	  .ai-followup__msg--ai {
+	    background: #00000004; color: var(--text);
+	  }
+	  .ai-followup__msg--ai::before {
+	    content: '🤖 AI：'; font-weight: 700; color: var(--selected);
+	    display: block; margin-bottom: 4px; font-size: 0.6875rem;
+	  }
+	  .ai-followup__input-row {
+	    display: flex; gap: 8px; margin-top: 8px;
+	  }
+	  .ai-followup__input-row input {
+	    flex: 1; padding: 8px 12px;
+	    background: #fff; border: 1px solid var(--border);
+	    border-radius: var(--radius-sm); color: var(--text);
+	    font-size: 0.8125rem; font-family: inherit;
+	    outline: none; transition: border-color var(--transition);
+	  }
+	  .ai-followup__input-row input:focus { border-color: var(--accent); }
+	  .ai-followup__input-row input::placeholder { color: #4b5563; }
+	  .ai-followup__input-row .btn--send {
+	    padding: 8px 14px; flex-shrink: 0;
+	  }
+
+	  .ai-error {
+	    padding: 12px 16px; color: #f87171; font-size: 0.8125rem;
+	    background: #f8717110; border-radius: var(--radius-sm); line-height: 1.6;
+	  }
+	  .ai-error code { background: #f8717120; padding: 2px 6px; border-radius: 4px; font-family: "SF Mono", "Fira Code", monospace; font-size: 0.75rem; }
+
+          /* ── Diagnosis Report ── */
+          .diagnosis-report {
+            margin-top: 24px; padding: 20px;
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: var(--radius); display: none;
+          }
+          .diagnosis-report--visible { display: block; animation: slideIn 300ms ease; }
+          .diagnosis-report__header {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+            padding-bottom: 14px; border-bottom: 1px solid var(--border);
+          }
+          .diagnosis-report__header h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin: 0; }
+          .diagnosis-report__score {
+            margin-left: auto; font-size: 0.8125rem; font-weight: 700; padding: 4px 12px;
+            border-radius: 100px; letter-spacing: 0.02em;
+          }
+          .diagnosis-report__score--ok { background: var(--selected-dim); color: var(--selected); }
+          .diagnosis-report__score--warn { background: var(--dominant-dim); color: var(--dominant); }
+          .diagnosis-report__score--fail { background: #f8717120; color: #f87171; }
+
+          .diagnosis-section { margin-bottom: 16px; }
+          .diagnosis-section__title {
+            font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.03em;
+            text-transform: uppercase; padding: 6px 0; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+          }
+          .diagnosis-section__title--fatal { color: #f87171; }
+          .diagnosis-section__title--warning { color: var(--dominant); }
+          .diagnosis-section__title--synergy { color: var(--selected); }
+          .diagnosis-section__count {
+            font-size: 0.6875rem; font-weight: 600; padding: 2px 8px;
+            border-radius: 100px; letter-spacing: 0.03em;
+          }
+          .diagnosis-section__count--fatal { background: #f8717120; color: #f87171; }
+          .diagnosis-section__count--warning { background: var(--dominant-dim); color: var(--dominant); }
+          .diagnosis-section__count--synergy { background: var(--selected-dim); color: var(--selected); }
+
+          .diagnosis-item {
+            padding: 10px 14px; margin-bottom: 6px; border-radius: var(--radius-sm);
+            border-left: 3px solid var(--border); background: #00000003;
+            font-size: 0.875rem; line-height: 1.6;
+          }
+          .diagnosis-item--fatal { border-left-color: #f87171; background: #f8717106; }
+          .diagnosis-item--warning { border-left-color: var(--dominant); background: #ece1dc30; }
+          .diagnosis-item--synergy { border-left-color: var(--selected); background: #e0ece630; }
+          .diagnosis-item__rule-id {
+            font-size: 0.625rem; font-weight: 700; color: var(--accent);
+            font-family: "SF Mono", "Fira Code", monospace; letter-spacing: 0.04em;
+            display: inline-block; margin-right: 6px;
+          }
+          .diagnosis-item__name { font-weight: 700; color: var(--text); }
+          .diagnosis-item__detail { margin-top: 4px; color: var(--text-muted); font-size: 0.8125rem; }
+          .diagnosis-item__alternative { margin-top: 4px; color: var(--selected); font-size: 0.8125rem; }
+
+          .diagnosis-report__client-tag {
+            font-size: 0.625rem; font-weight: 700; padding: 2px 8px; border-radius: 100px;
+            background: var(--selected-dim); color: var(--selected); letter-spacing: 0.04em;
+            margin-left: 4px;
+          }
+          .diagnosis-report__empty {
+            text-align: center; color: var(--text-muted); padding: 20px;
+            font-size: 0.9375rem; font-style: italic;
+          }
+  /* ── Custom Element ── */
+  .chip--custom {
+    border-style: dashed; border-color: var(--accent-dim);
+    color: var(--text-muted);
+  }
+  .chip--custom:hover {
+    border-color: var(--accent); color: var(--text);
+    background: var(--accent-dim);
+  }
+  .chip--custom.chip--selected { border-color: var(--selected); color: var(--selected); background: var(--selected-dim); }
+  .chip--custom.chip--dominant { border-color: var(--dominant); color: var(--dominant); background: var(--dominant-dim); }
+  .chip--custom.chip--auxiliary { border-color: var(--auxiliary); color: var(--auxiliary); background: var(--auxiliary-dim); }
+  .chip--custom .badge { background: var(--accent); }
+  .chip--custom .chip__del {
+    display: none; margin-left: 4px; cursor: pointer;
+    font-size: 0.75rem; color: #f87171; line-height: 1;
+    font-weight: 700;
+  }
+  .chip--custom:hover .chip__del { display: inline; }
+  .chip--custom .chip__del:hover { color: #ef4444; }
+
+  /* ── Add Custom Button ── */
+  .card__custom-toggle {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-top: 10px; padding: 4px 10px;
+    border: 1px dashed var(--border); border-radius: 100px;
+    font-size: 0.75rem; color: var(--text-muted); cursor: pointer;
+    background: transparent; transition: all var(--transition);
+    font-family: inherit;
+  }
+  .card__custom-toggle:hover { border-color: var(--accent); color: var(--accent); }
+  .card__custom-form {
+    display: none; margin-top: 8px; gap: 6px; align-items: center; flex-wrap: wrap;
+  }
+  .card__custom-form--visible { display: flex; }
+  .card__custom-form input {
+    padding: 5px 10px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 100px; color: var(--text); font-size: 0.75rem;
+    font-family: inherit; outline: none; min-width: 80px;
+  }
+  .card__custom-form input:focus { border-color: var(--accent); }
+  .card__custom-form .btn--add {
+    padding: 5px 12px; font-size: 0.75rem; border-radius: 100px;
+    background: var(--card); border: 1px solid var(--border); color: var(--text-muted);
+    cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .card__custom-form .btn--add:hover { border-color: var(--accent); color: var(--accent); }
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════ TOP BAR ═══════════ -->
+<div class="topbar">
+  <div class="logo">🎬 方案骨架生成器</div>
+
+  <div class="topbar__group">
+    <button class="btn btn--primary" onclick="generate()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      生成方案
+    </button>
+    <button class="btn" onclick="randomize()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 4l3 3-3 3M18 20l3-3-3-3M3 7h12M3 17h12"/></svg>
+      随机生成
+    </button>
+    <button class="btn btn--ghost" onclick="clearAll()">清空</button>
+  </div>
+
+  <span class="topbar__sep">|</span>
+
+  <div class="topbar__group">
+    <select class="btn" id="presetSelect" onchange="applyPreset(this.value); this.value='';">
+      <option value="">📋 预设方案 ▾</option>
+      <option value="chuang101">创造101</option>
+      <option value="zhongdi">种地吧</option>
+      <option value="chenglang">乘风破浪的姐姐</option>
+      <option value="xiangwang">向往的生活</option>
+      <option value="xiyouji">新西游记</option>
+      <option value="runningman">Running Man</option>
+      <option value="renshi">认识的哥哥</option>
+    </select>
+    <select class="btn" id="genreSelect" onchange="setGenre(this.value)">
+      <option value="">🎬 通用模式</option>
+      <option value="talent_show">🏆 选秀/竞技类</option>
+      <option value="dating">💕 恋综/情感类</option>
+      <option value="observation">👀 观察类</option>
+      <option value="survival">🔥 生存/挑战类</option>
+      <option value="communal">🏠 群居实验类</option>
+      <option value="travel">🚐 旅行/公路类</option>
+    </select>
+  </div>
+
+  <span class="topbar__sep">|</span>
+
+  <div class="topbar__group">
+    <button class="btn btn--ai" id="btnPolish" onclick="aiPolish()" title="AI 润色方案描述">🤖 润色</button>
+    <button class="btn btn--ai" id="btnBrainstorm" onclick="aiBrainstorm()" title="AI 创意脑暴">🧠 脑暴</button>
+    <button class="btn btn--ai" id="btnDiagnose" onclick="aiDiagnose()" title="AI 诊断审阅">🔍 诊断</button>
+    <button class="btn btn--ai" id="btnBusiness" onclick="aiBusiness()" title="AI 商业分析">💼 商业</button>
+    <select class="btn" id="deptSelect" onchange="onDeptChange(this.value)" style="font-size:0.75rem;padding:4px 8px;max-width:90px" title="决策者部门">
+      <option value="">🏢 部门</option>
+      <option value="运营部门">运营</option>
+      <option value="商业化部门">商业化</option>
+      <option value="内容部门">内容</option>
+      <option value="平台策略">策略</option>
+    </select>
+    <select class="btn" id="roleSelect" onchange="onRoleChange(this.value)" style="font-size:0.75rem;padding:4px 8px;max-width:90px" title="决策者背景">
+      <option value="">👤 角色</option>
+      <option value="财务出身">财务</option>
+      <option value="制片出身">制片</option>
+      <option value="互联网产品出身">产品</option>
+      <option value="传统媒体出身">媒体</option>
+      <option value="商人出身">商人</option>
+    </select>
+  </div>
+
+  <button class="btn" onclick="copyOutput()" id="btnCopy" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    复制
+  </button>
+  <button class="btn btn--ghost" onclick="exportMarkdown()" id="btnExport" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Markdown
+  </button>
+  <button class="btn btn--ghost" onclick="openSettings()" title="API 设置">⚙️</button>
+  <span class="topbar__version">v1.13</span>
+</div>
+<div id="backtrackBanner"></div>
+
+<div id="signalPanel" class="signal-panel" style="display:none">
+  <div class="signal-panel__header">
+    📡 发端信号 · 当前热点 & 前置趋势
+    <span class="signal-panel__genre-tag" id="signalGenreTag"></span>
+    <button class="btn btn--ghost" onclick="toggleSignalPanel()" style="margin-left:auto;font-size:1rem;padding:2px 6px;line-height:1" title="关闭">✕</button>
+  </div>
+  <div class="signal-grid" id="signalGrid"></div>
+</div>
+
+<div id="koreanShowPanel" class="signal-panel" style="display:none">
+  <div class="signal-panel__header">
+    🇰🇷 韩综参考 · 标志性样本库
+    <span class="signal-panel__genre-tag" id="koreanGenreTag"></span>
+    <button class="btn btn--ghost" onclick="toggleKoreanShowPanel()" style="margin-left:auto;font-size:1rem;padding:2px 6px;line-height:1" title="关闭">✕</button>
+  </div>
+  <div class="signal-grid" id="koreanGrid"></div>
+</div>
+
+
+	<div class="modal-overlay" id="settingsModal" onclick="closeSettings()">
+
+	  <div class="modal" onclick="event.stopPropagation()">
+	    <div class="modal__title">⚙️ API 设置</div>
+	    <div class="modal__desc">
+	      使用 DeepSeek API 为方案生成器提供 AI 润色、脑暴和诊断能力。
+	      <a href="https://platform.deepseek.com/api_keys" target="_blank">获取 API Key →</a>
+	    </div>
+	    <div class="modal__field">
+	      <label>API Key</label>
+	      <div class="modal__input-row">
+	        <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off">
+	        <button class="btn btn--ghost" onclick="toggleKeyVisibility()" title="显示/隐藏" style="padding:8px 10px">👁️</button>
+	      </div>
+	      <div class="modal__status" id="apiKeyStatus"></div>
+		    </div>
+		    <div class="modal__field">
+		      <label>模型</label>
+		      <select id="modelSelect" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.875rem;font-family:inherit;outline:none;cursor:pointer">
+		        <option value="deepseek-v4-pro">DeepSeek V4 Pro（推荐）</option>
+		      </select>
+		      </div>
+	    <div class="modal__actions">
+	      <button class="btn btn--ghost" onclick="clearApiKey()">清除</button>
+	      <button class="btn" onclick="closeSettings()">取消</button>
+		      <button class="btn btn--ghost" onclick="testConnection()" id="btnTestConn">🔗 测试连接</button>
+		      <span style="flex:1"></span>
+	      <button class="btn btn--primary" onclick="saveApiKey()">保存</button>
+	    </div>
+	  </div>
+	</div>
+<!-- ═══════════ MAIN ═══════════ -->
+<div class="container">
+  <div class="grid" id="grid"></div>
+
+  <!-- Output Panel -->
+  <div class="output" id="output">
+    <div class="output__header">
+      <input class="output__title" id="outputTitle" value="未命名方案" placeholder="输入方案名称…">
+
+    </div>
+    <div class="output__body" id="outputBody"></div>
+	    <div class="ai-results" id="aiResults"></div>
+
+            <div class="diagnosis-report" id="diagnosisReport"></div>
+
+  </div>
+</div>
+
+<!-- Detail Popover -->
+<div id="detail-popover"></div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════
+// DATA: 8 categories, 58 elements
+// ═══════════════════════════════════
+const CATEGORIES = [
+  {
+    id: 'narrative',
+    layer: 1,
+    name: '叙事引擎',
+    emoji: '🎬',
+    subtitle: '「为什么好看」',
+    hint: '选 1 个主导 + 1 个辅助',
+    dualMode: true,
+    elements: [
+      { id: 'E1', label: '成长引擎', desc: '从不会到会', detail: '最古老的引擎，也是最管用的。观众天生就会对"从笨到会"这个过程上心——重点不是最后学会了没有，是"差一点就做到了"那个瞬间。想想杨超越：她不是靠唱跳变好让人记住的，是你亲眼看到了每一帧挣扎。一句话：成长得让人看得见，搞几个里程碑，不然观众感觉不到"在变"。' },
+      { id: 'E2', label: '对抗引擎', desc: '跟谁对着干', detail: '关键先问：对手是谁？人vs系统（体制压迫）、人vs人（直接抢）、人vs自然（生存挑战）、人vs自己（内心挣扎）——四种方向，四种完全不同的调调。对手越具体越好看。种地吧的对手是土地——不讲情面，最公平也最残酷。PRODUCE 101的对手是出道位——名额有限但梦想无限。选对对手，节目气质就对了一半。' },
+      { id: 'E3', label: '悬念引擎', desc: '下一秒会发生什么', detail: '说白了你不是让观众"知道结果"，是让他们"猜结果并且在乎自己猜得对不对"。淘汰赛的悬念不是"谁走了"，是"我猜的那个人走了没有"。如果你有淘汰环节但观众还没形成自己的判断，悬念就没生效。试试这个：淘汰前24小时给观众开个预测窗口——猜的本身就成了参与。' },
+      { id: 'E4', label: '关系引擎', desc: '人跟人之间怎么变', detail: '你不是在展示关系——是在展示关系的变化。从陌生到信任、从信任到裂了、从裂了到和解——变才是戏。恋综把这做到极致了，但任何方案都可以拿它当辅助。记住：观众不在乎"谁跟谁关系好"，在乎的是"这段关系正在往哪个方向走"。' },
+      { id: 'E5', label: '实验引擎', desc: '「如果……会怎样」', detail: '把一个假设扔进现实里看它怎么发酵。"如果把10个陌生人关一屋里30天"、"如果一个偶像团体没经纪人自己运营自己"——改变一个条件，然后观察结果。核心就一条：你得让观众知道"变量是什么"，不然他们看不懂你在实验什么，也就享受不到观察的乐趣。' },
+      { id: 'E6', label: '揭秘引擎', desc: '带你去看平时看不见的', detail: '打开一个观众进不去的世界——偶像的后台、医生的急诊室、农民凌晨三点在干嘛。力量在于：你知道有东西观众不知道，你的任务就是把它端到他们面前。但记住——最好的揭秘不是让观众觉得"哇好神奇"，是让观众看完说"原来是这样啊"。建立理解，不是制造奇观。' },
+      { id: 'E7', label: '治愈引擎', desc: '让你觉得会好的', detail: '这两年最被低估的东西——信息轰炸到吐，观众想看的不是更刺激，是能喘口气。治愈不是说没有冲突，是冲突完了让你看到修复——"会好的"。就像《向往的生活》：没任务没淘汰，就是做饭聊天发呆，但大家一周一刷，因为这是每周的情感避风港。跟E4的区别？关系引擎看的是"人跟人之间在变什么"，治愈引擎看的是"人本身有没有被安抚到"。E7+E4是慢综艺的王炸组合。' },
+      { id: 'E8', label: '幽默引擎', desc: '好笑就是目的', detail: '好笑不是"顺便好笑"——好笑本身就是引擎。很多人不觉得这算个引擎，但韩国综艺早就证明了——你看《新西游记》，没有成长、没有对抗、没有悬念，观众每一季等的不是"谁赢了"，是"这次谁又搞笑了"。关键：得有个敢于出丑的人。还有个坑：笑跟悬念不兼容——笑需要放松，悬念需要紧张，同时发力就互相抵消了。' },
+      { id: 'E9', label: '游戏引擎', desc: '看聪明人怎么玩规则', detail: '观众享受的不是结果，是"看这帮人怎么在规则里钻空子"。Running Man撕名牌比的不是力气，是谁更会"在规则边缘跳舞"。搞这个引擎要三样东西：规则得清楚（观众能跟着算）、得有得选（不能就一个最优解）、还得有意外（让策略突然失效）。跟E3的区别？悬念是"不知道结果"，游戏是"知道规则但不知道别人怎么玩"。E9+E8（幽默）="笑着看聪明人被坑"。' }
+    ]
+  },
+  {
+    id: 'time',
+    layer: 1,
+    name: '时间结构',
+    emoji: '⏳',
+    subtitle: '「节奏怎么走」',
+    hint: '可多选叠加',
+    dualMode: false,
+    elements: [
+      { id: 'T1', label: '倒计时型', desc: 'X时间内必须完成Y', detail: '时间压力是最直接的能量来源。但光有倒计时不够——你得让观众知道"如果完不成了会怎样"。种地吧的种植周期是最好的例子：作物不等人，错过播种=颗粒无收，这后果是真实的、无法讨价还价的。你设计的时候问问自己：这个倒计时到了终点，对参与者到底意味着什么？' },
+      { id: 'T2', label: '周期性', desc: '每周固定时间有大事发生', detail: '人为制造节奏感——每周考核、每月淘汰、每季公演。观众的身体会习惯这个节奏，到点就来。创造101的每周淘汰就是T2的用法。但有个坑：节奏一旦建立了，打破它观众会炸——所以改档期是大忌。想软一点的话，叠加T3（实时记录），让机械感不那么重。' },
+      { id: 'T3', label: '实时记录型', desc: '天天拍，不编不导', detail: '每天连续拍，故事不是"编排"出来的，是后期在几百小时素材里"发现"的。代价很贵——拍摄周期长、后期累死人。但真实感没法替代——观众看得出来"这不是剧本"。想想：连续100天的24小时素材里，藏着多少你编不出来的瞬间？' },
+      { id: 'T4', label: '跳跃型', desc: '只留高潮，中间跳过', detail: '只保留关键事件节点，中间留白。适合季播综艺——每期聚焦一个爆点。好处是节奏紧凑，不给你走神的机会。坑是跳跃太大了观众会断片——得用闪回、采访、旁白填坑。' },
+      { id: 'T5', label: '回顾型', desc: '从结局往回讲', detail: '"一年后他们出道了，让我们回到第一天"——你知道结局了，所以回头看每一个细节都变味了。早期那些不起眼的小事，在已知结局的滤镜下会发光。适合已经知道结果的团体纪录片。' },
+      { id: 'T6', label: '实时直播型', desc: '播什么你看什么，没得剪辑', detail: '没有后期、没有"重来一遍"。不可预测性是最大的卖点，也是最大的坑。但记住：直播翻车不是事故——是内容。前提是翻得真诚，不是演的。成员在直播中第一次听到排名时的真实反应，比任何补拍都震撼。' },
+      { id: 'T7', label: '碎片化时间', desc: '随便从哪集开始都能看', detail: '短视频时代的逻辑——不用"从第一集开始追"。每段能独立看，新观众随时跳进来。抖音综艺、竖屏短节目的天然选择。坑是碎片会拆掉长线叙事——你得在每个片段结尾埋个钩子，一个开放问题，下一段开头回答它，让人忍不住点下一个。' },
+      { id: 'T8', label: '慢时间', desc: '空白也是内容', detail: '下雨的下午，谁都没说话，锅里在炖着汤——但你就是不想换台。这就是慢时间。它赌的是观众有耐心陪内容"在场"，不需要每秒钟都有"事"发生。最好的用法：T8+T3（实时记录），不剪不编，让空白自己说话。但有个前提——人得有意思，不然慢=无聊。' },
+      { id: 'T9', label: '自然节律', desc: '时间由天说了算', detail: '种地吧的逻辑——不按"播出计划"走，按"作物生长"走。麦子熟了就得收、下雨了就停工。不是你制作组在控制节奏，是天在控制。最牛的地方在于"你没法跟土地讨价还价"——作物死了就是死了，观众看到了，所以丰收的时候没人说"演的"。T9天然适合搭配A3（失败展示）：失败不是编的，是老天决定的。T9+T1（倒计时）= 农业综艺的黄金公式。' }
+    ]
+  },
+  {
+    id: 'space',
+    layer: 2,
+    name: '空间规则',
+    emoji: '📍',
+    subtitle: '「人在哪里」',
+    hint: '可多选叠加',
+    dualMode: false,
+    elements: [
+      { id: 'S1', label: '封闭空间', desc: '与外界隔绝，自己的规则自己定', detail: '关在一起，密度就上来了。30个人关三个月，人际关系想不加速都难。空间不是背景——墙在哪决定了谁能碰到谁，走廊多长决定了私下聊天的机会有多少。但有个坑：关太久会窒息。得留一两扇"窗"——偶尔出去透个气，不然人会炸。' },
+      { id: 'S2', label: '半开放空间', desc: '有基地，也能出去', detail: '不是S1和S3的折中——是"密度+窗口"的化学反应。合宿让关系升温，外勤让真实世界插进来——两个空间的拉扯本身就是戏。基地里吵完架，第二天还得一起出外景面对路人——这种切换，纯封闭或纯开放都给不了。大概比例：70%关着，30%放出去。' },
+      { id: 'S3', label: '开放世界', desc: '到处跑，到处是新地方', detail: '公路综艺、旅行选秀的天选空间。每期新场景、新路人、新意外——新鲜感不会枯。坑是关系不易做深——一直在移动，没有"家"的感觉。每站多停几天，给关系发酵留点时间。适合以"探索"或"对抗自然"为主引擎的方案。' },
+      { id: 'S4', label: '舞台×后台', desc: '台上表演+台下真实', detail: '选秀最经典的空间模子。力量在于对比——台上光芒万丈，台下崩溃大哭。观众爽的是"我看到了两种你"。后台不是舞台的补充——是解药。舞台上太完美觉得假，后台的狼狈负责说"这是真的"。' },
+      { id: 'S5', label: '纯数字空间', desc: '直播间/社群/虚拟世界', detail: '没有物理空间，所有互动都在屏幕上。团播、虚拟偶像的天然选择。挑战在于：没有"共处一室"，密度感怎么造？弹幕就是空间，社群就是后台。想想看：一个纯在直播间里跑的选拔——观众和选手在同一个聊天框里，淘汰由实时弹幕投票定。' },
+      { id: 'S6', label: '嵌套空间', desc: '不同区域玩不同规则', detail: '里面分层——淘汰区vs安全区、训练室vs休息室。进了不同区域，规则自动切。说白了就是"空间即规则"。最有意思的设计：安全区里的人可以通过单向玻璃看着淘汰区——"看着别人走，知道自己可能是下一个"。' },
+      { id: 'S7', label: '移动容器', desc: '空间自己在动，人被关在里面', detail: '《新西游记》的玩法——人在车里、船上、飞机上，空间在走，"无聊"反而催生最有意思的东西。几个人被关在移动的盒子里，除了聊天玩游戏互相烦，还能干嘛？这种"被迫共处"比静态封闭空间更自然。S7+E8（幽默）= 旅行综艺的灵魂。' },
+      { id: 'S8', label: '对立空间', desc: '两个世界来回切换', detail: '两个空间同时存在，规则完全不同，人在两个世界之间跳来跳去。《乘风破浪的姐姐》的舞台vs宿舍、A班教室vs F班教室——"同一个人在不同的空间像两个人"，观众看的就是这个反差。切换的瞬间最真实：从光鲜舞台走进简陋宿舍的那一刻，妆还没卸，人已经垮了。反差越大，切换越好看。' }
+    ]
+  },
+  {
+    id: 'filter',
+    layer: 2,
+    name: '筛选机制',
+    emoji: '🔍',
+    subtitle: '「谁留下谁离开」',
+    hint: '可多选（建议 2-4 个）',
+    dualMode: false,
+    elements: [
+      { id: 'F1', label: '专家评审', desc: '导师/评委说了算', detail: '最传统的路子——优点是权威，缺点是"黑幕"质疑永远在。解法不是找更牛的评委——是让评审过程透明。为什么给这个分？标准是什么？有申诉渠道吗？评委说"我感觉不对"就给低分，观众不买账。但他说"你第二段副歌气息断了三次"——观众会点头。' },
+      { id: 'F2', label: '客观数据', desc: '分数/任务结果自动决定', detail: '数据不会说谎——理论上最公平。但纯靠数据会杀死戏剧性，数据不会因为"选手他妈昨天来了"就多给一分。建议配比：三到四成靠数据保底线公平，剩下六七成靠互评、评审、自选来搞戏剧空间。数据是锚，稳住底线就行，别让它做全部。' },
+      { id: 'F3', label: '成员互评', desc: '选手自己投票淘汰彼此', detail: '最有戏的机制——被队友投走和被陌生人投走，打击完全不一样。"我以为我们是朋友"的崩塌，比任何评委点评都震撼。坑是容易产生真实的人际伤害——得配心理支持，投票匿名，不公布谁投了谁。想象一下：所有人都知道有人投了自己——但不知道是谁。' },
+      { id: 'F4', label: '观众投票', desc: '粉丝决定去留', detail: '选秀的核心机制，也是最容易过不了审的地方。这两年的环境，纯靠观众投票定生死几乎不可能。换个思路：不投"谁走"，投"下周吃什么""直播聊什么""应援色选哪个"——参与感还在，红线不过。BTS的Weverse已经跑通了这种模式。' },
+      { id: 'F5', label: '自选退出', desc: '可以主动离开', detail: '最让人害怕也最有力量的元素。能走但选择留下——这个"留下"本身就是最好的叙事。真有人走了呢？恰好证明你的系统是真的，不是演的。种地吧用了F5，没人说"演的"——随时能走，留下就是真选择。一句话：允许退出的系统，比不允许退出的更能证明自己的价值。' },
+      { id: 'F6', label: '系统自动', desc: '规则自动淘汰，没得商量', detail: '末位淘汰、积分清零、随机轮换——规则面前人人平等。好处是公正无争议，坏处是可能把"最有故事的人"给淘了。留个后手：淘汰别立刻生效，给个缓冲期；或者积分可以"转让"，让戏剧空间自己长出来。' },
+      { id: 'F7', label: '不淘汰/分流', desc: '不离开，换个赛道', detail: '人还在体系里，但角色变了：选手变助教、台前转幕后、团体转个人。不想搞残酷淘汰的用这个。竞争张力会降——得靠别的引擎补（比如"超越自己"替代"赢过别人"）。换个说法：分流不是惩罚，是"我们发现了你更擅长的方向"。' },
+      { id: 'F8', label: '随机/运气', desc: '抽签、转盘、骰子说了算', detail: '韩国综艺的看家本领——转盘、抽签、掷骰子。《新西游记》的选房游戏：运气决定一切，没人能抱怨，观众笑到肚子疼。这不叫"不公平"——叫"大家面对同一个不确定"，反而最公平。关键：结果必须立刻生效、不能反悔——你敢说"再来一次"，观众就觉得假。F8+E8（幽默）= 笑料稳定产出。' }
+    ]
+  },
+  {
+    id: 'characters',
+    layer: 2,
+    name: '人物网络',
+    emoji: '👥',
+    subtitle: '「谁和谁什么关系」',
+    hint: '可多选（建议 2-3 个）',
+    dualMode: false,
+    elements: [
+      { id: 'C1', label: '竞争者', desc: '抢同一个东西', detail: '最基础的人物关系——但光竞争没意思。好看的是"两个我都喜欢，只有一个能赢"的观众困境。关键不是让他们争，是让观众为难。想象一下：规则够透明，两个竞争者互相认可对方的实力——赢了是荣耀，输了也心服。这种体面的竞争比撕逼好看一百倍。' },
+      { id: 'C2', label: '合作者', desc: '必须一起才能成', detail: '强制合作是把陌生人变成战友最快的方式。合作成了→关系升级，合作砸了→双重爆炸（任务失败+关系崩了）。把两个互相看不顺眼的人塞进同一个任务——要么和解，要么一起完蛋。不管哪个结果，都是好内容。' },
+      { id: 'C3', label: '对照者', desc: '对同一个问题有不同答案', detail: '最值钱的选角原理。不是选"一个跳舞好的+一个唱歌好的"（那是拼盘），是选"对「努力重要还是天赋重要」有不同答案的三个跳舞的人"。30个人，每个维度上站不同立场，他们自己就能吵起来，不需要剧本。怎么用：选角时先定3-5个核心维度——比如"对规则的态度""对队友的期待""对镜头的处理"——每个维度找2-3个不同立场的人。这些维度一交叉，张力自己就长出来了。' },
+      { id: 'C4', label: '师徒', desc: '有人教，有人学', detail: '不止徒弟在成长——师傅也在被看。师傅怎么教、有没有耐心、教得对不对——观众全看在眼里。PRODUCE 101的导师线之所以动人，是因为"师傅自己也做过选手"。最好的师徒关系是双向的：师傅在教的过程中也发现了自己的瓶颈。' },
+      { id: 'C5', label: '镜像者', desc: '起点差不多，结局差很多', detail: '观众自己就会比较：他俩当初差不多，怎么就差了这么多？不需要节目解释，观众自己会疯狂回放找"分叉点"。越相似的人走向越不同，戏越足。想想：同一天进公司、同岁、同星座的两个练习生——半年后一个出道组一个淘汰边缘，观众能给你剪出八百个对比视频。' },
+      { id: 'C6', label: '守护者', desc: '有人在护着另一个人', detail: '淘汰时情感冲击最大的关系。守护者被淘汰=被护的人盾碎了。被护的人被淘汰=守护者自责"我没护好"。两个方向都是顶级的催泪弹。想想：守护者为了保被守护者晋级，主动放弃自己的机会——这不是编的，真人就会这么干。' },
+      { id: 'C7', label: '暧昧者', desc: '可能有，可能没有', detail: '恋综的核心引擎，团综里用的时候小心点。暧昧的力量在"不确定"——一旦确认，要么升温要么散了。团综更适合当背景音——偶尔的眼神、莫名的紧张、说了半句又收回去的话。让观众自己去猜、去剪、去传播——不确定比确认能撑更久。' },
+      { id: 'C8', label: '颠覆者', desc: '不按规则出牌的人', detail: 'Running Man李光洙的经典角色——所有人都知道规则，但有个人偏要在规则边缘跳舞，或者直接踩线。他不是在捣乱——是在"测试系统弹性"。规则被挑战时，系统怎么反应比规则本身更好看。《认识的哥哥》也是颠覆者扎堆的地方——每个人都想打破"教室"的框。注意：得有一个"规则守护者"来平衡，不然系统崩了不好看。C8+E8（幽默）= 笑到停不下来。' },
+      { id: 'C9', label: '潜伏者', desc: '有秘密任务的人', detail: '不一定是间谍——可能是节目组偷偷给了某个人特殊任务（像《新西游记》的龙珠任务），观众知道但其他参与者不知道。核心：观众必须知情——如果观众也不知道，就变成"骗观众"了，不是"让观众享受信息差"。C9+E3（悬念）= 你享受的是"我知道但你们都不知道"的爽感。' },
+      { id: 'C10', label: '旁观者', desc: '在场但不完全参与的人', detail: '像《认识的哥哥》里的"观众嘴替"——人在场但保持一点距离，偶尔插一句"这也太离谱了吧"，观众瞬间觉得"他说了我想说的"。价值在于提供一个"外面"的视角——当所有人都陷进去的时候，需要有人喊一嗓子"你们现在看起来很傻"。1-2个够用，多了就没人认真玩了。但旁观者偶尔也得被"拉下水"，不然太像主持人了。' }
+    ]
+  },
+  {
+    id: 'viewing',
+    layer: 2,
+    name: '观看契约',
+    emoji: '👁️',
+    subtitle: '「观众怎么参与」',
+    hint: '可多选（建议 1-2 个）',
+    dualMode: false,
+    elements: [
+      { id: 'V1', label: '纯围观', desc: '我只看，不插手', detail: '纪录片模式——观众是墙上的苍蝇，只观察不介入。适合以"真"为核心卖点的方案。这两年观众越来越不满足于"只看"了，但有时候不参与本身就是一种尊重——让事情自然发生，不因为你的存在而变形。' },
+      { id: 'V2', label: '投票决策', desc: '我的选择有后果', detail: '传统选秀的核心契约——"我的票能改变结果"。力量来自参与感，但"定生死"这两年基本过不了审。换个思路：不投谁走，投下周干什么、穿什么、唱什么——话语权还在，红线不过。BTS的Weverse已经验证了这种模式。' },
+      { id: 'V3', label: '弹幕互动', desc: '我说的他们能看到', detail: '直播综艺的标配。弹幕不只是评论——是节目的一部分。选手直接念弹幕、回弹幕——观众从"旁观"变成了"在场"。成员在直播里说"刚才那条弹幕说得对"，墙就碎了。' },
+      { id: 'V4', label: '付费解锁', desc: '花钱买别人没有的', detail: '核心不是"收费"——是"花钱得到的东西值不值"。独家幕后、提前看、专属互动——每一项都得让粉丝觉得"这是别人没有的"。坑：如果免费内容比付费的好看，观众觉得被套路了。付费内容的质量必须≥免费的。' },
+      { id: 'V5', label: '社群共创', desc: '大家一起定，一起造', detail: '粉丝不投票定生死，但投票定下周伙食、直播主题、应援色、粉丝名——权力从"裁判席"挪到"共创桌"，参与了但不踩线。想想：粉丝命名了应援色，从此每次看到那个颜色就觉得"这是我选的"。' },
+      { id: 'V6', label: '线下参与', desc: '我到现场', detail: '从屏幕里走到面前——这种"真实感冲击"是任何直播都给不了的。适合当阶段性高潮（公演、见面会、开放日），不适合当日常。一个看了三个月的粉丝第一次来现场——她看到的不是演出，是"我追了三个月的这些人真的存在"。' },
+      { id: 'V7', label: '陪伴型观看', desc: '开着不看也行，陪着就好', detail: '这两年最明显的变化——不是因为"好看"才看，是因为"想有人在旁边"才看。《向往的生活》就是这么看的：打开不是追剧情，是"家里有人在做饭，我也在做自己的事"。内容不需要密集刺激，只需要在场。但碎片化会破坏这种感觉——适合T3那种长时间连续的内容。V7+E7（治愈）= 慢综艺的终极契约。' },
+      { id: 'V8', label: '二创授权', desc: '你给的素材，我来剪我来造', detail: 'K-pop粉丝经济的底层逻辑：爱豆的每个物料都是粉丝二创的原材料。官方要做的：给高质量素材（直拍、多机位、未剪辑版）、默许二创不追版权、甚至官方搞混剪比赛。观众不是终点——是内容生态的一个节点。' },
+      { id: 'V9', label: '视角控制', desc: '我想看谁就看谁', detail: 'BTS线上演唱会的多机位玩法——观众在成员之间切换、选全景还是特写、甚至换听谁的耳返。"观看"变"自己当导演"——每个人看到的是自己的版本，不是官方统一给的。需要技术底子（多路流），但效果是革命性的：不是让内容更好看，是让内容更像我自己的。' }
+    ]
+  },
+  {
+    id: 'exit',
+    layer: 3,
+    name: '出口设计',
+    emoji: '🚪',
+    subtitle: '「最终结果是什么」',
+    hint: '单选',
+    dualMode: false,
+    elements: [
+      { id: 'O1', label: '成团出道', desc: '选X人组团，正式运营', detail: '最经典的选秀出口——有限名额的稀缺感驱动一整个赛程。"一年后7人出道"——从这句话落地那刻起，所有人的行为都朝那个方向去了。坑：出道后运营跟不上，观众觉得投了个寂寞。记住：出道不是终点，是新起点——这个预期要从第一天就建起来，不然出道即巅峰、巅峰即下坡。' },
+      { id: 'O2', label: '个人签约', desc: '各走各的，各自签约', detail: '比赛完了各找各妈——适合以"个人展示"为主、不以团体为目标的方案。好处是没团魂压力，每个人走自己的路。坑是缺一个共同的终点——观众没一个"我们"来托住感情。想想：最后一场不是成团夜，是"个人未来发布会"——每个人上台说自己的下一步。' },
+      { id: 'O3', label: '项目制', desc: '完成这件事就散', detail: '限定团、项目型任务的天然出口。种地吧就是：收完这季作物，任务完成。好处是预期清楚——大家都知道什么时候结束，不会有"追了个没结果的"的失落。坑是项目完了观众也走了——得提前埋第二季或衍生项目的钩子。' },
+      { id: 'O4', label: '平台留存', desc: '留在平台体系里继续', detail: '不是解散也不是出道——是进"第二阶段"。第一阶段筛完，留下的人进平台持续运营体系，不搞一次性成团。适合需要长期孵化的模式。出口不是一个夜晚，是一扇门——走过这扇门的人进了更大的世界，而不是终点站。没有"出道即巅峰"的问题，因为根本没有"出道"这个终点。' },
+      { id: 'O5', label: '开放结局', desc: '故事还在继续，没有终点', detail: '种地吧的出口哲学——不设终点。好处是观众没有"完结了该走了"的冲动。坑是如果没有新的动力进来，"持续"会变成"没变化"。需要不断抛新问题让观众好奇——不是"故事完了吗"，是"接下来会怎样"。' },
+      { id: 'O6', label: '回归日常', desc: '结束，回到原来的生活', detail: '社会实验类节目的经典出口——经历了这一切的人，回到原来的生活会怎样？力量在对比：变了 vs 没变、回得去 vs 回不去。适合以"改变"为主导的方案。三个月后回到原来的学校——周围人没变，但你变了。这种错位感就是最动人的续集。' },
+      { id: 'O7', label: '持续孵化', desc: '没有出道日，一直在长大', detail: '偶像培养的长期主义——不是"X月X日出道"，是"在体系里持续成长，每个阶段有新可能"。好处是没有"出道后断崖"，观众一直都在看。代价是需要持续产内容和投运营——这本质上是"没有大结局的连续剧"，对制作方的耐力是终极考验。O7+O5搭配就是长期偶像孵化的标准答案。' },
+      { id: 'O8', label: '各走各路', desc: '每个人自己定义什么叫成功', detail: '最激进的出口——没有统一的"成团""冠军""第一"，每个人走自己的路。社会实验和多元选秀的天然选择。关键：不是"不管了"——平台得给每个人差异化的路径和资源，否则就是扔出去自己游。真正厉害的不是"没有出口"，是"每个人都有属于自己的出口"——这要求从第一天就建立"不同人有不同路"的预期。' }
+    ]
+  },
+  {
+    id: 'authenticity',
+    layer: 3,
+    name: '真实性锚点',
+    emoji: '⚓',
+    subtitle: '「观众为什么相信」',
+    hint: '可多选（建议 2-3 个）',
+    dualMode: false,
+    elements: [
+      { id: 'A1', label: '沉默摄影机', desc: '一直拍，不插手', detail: '摄影机像墙上的苍蝇——只记录不介入。这不是技术选择，是承诺：我们没编排。代价是你得接受"可能什么都没发生"。沉默摄影机不保证好看——只保证"如果好看了，那是真的"。' },
+      { id: 'A2', label: '因果链', desc: '每个结果都有原因可查', detail: '不是告诉观众为什么——是让他们自己看到为什么。从Day 1开始，每一次迟到、每一次刷手机、每一次翻白眼——到淘汰那天，观众不需要解释，因为整整一条链他们亲眼看了三个月。这就是A1沉默摄影机存在的意义：只有不插手，因果链才成立。想象一下：选手淘汰时弹幕不是"凭什么"而是"早就该了"——因果链，生效了。' },
+      { id: 'A3', label: '失败展示', desc: '不只要成功，失败也全放出来', detail: '对抗"剧本感"最直接的手段。只展示闪光时刻，观众默认是演的。你连搞砸、崩溃、放弃也放——成功的部分突然就可信了。种地吧的作物真的死了，观众看到了——所以后来丰收没人说"演的"。不是用失败博眼球——是因为有了失败，成功才不是编的。' },
+      { id: 'A4', label: '线上线下对得上', desc: '节目外的东西验证节目里的', detail: '节目里说"训练到凌晨三点"，粉丝真拍到了凌晨三点亮着灯的训练室——两个来源对上了，真实性翻倍。K-pop粉丝经济就是建在这上面的：粉丝不是被动消费者，是"真实性侦探"。成员说爱吃某家拉面，三天后有人拍到他真去了——这种"节目内外一致"的细节，比任何声明都管用。' },
+      { id: 'A5', label: '观众在场', desc: '直播，观众亲眼看着', detail: '不需要"相信"——亲眼看到了。这是直播最根本的真实性优势。不是技术层面的事（没后期），是心理层面的事——"我看到了，所以是真的"。直播的意外没法控制——但这正是你想要的。成员直播里第一次看到排名，哭得说不出话——观众看到了每一帧真的反应，不是补的。' },
+      { id: 'A6', label: '身体证据', desc: '汗水、淤青、黑眼圈——身体不会撒谎', detail: 'AI什么都能造，但身体造不了假。汗水、淤青、眼眶发黑、控制不住地发抖——最原始也最难伪造的真实性信号。选手在镜头前表情管理失控、眼泪不是"感人的哭"而是"崩溃的哭"——你不需要分析，本能就告诉你这是真的。三小时体能考核后，全瘫地上没人说话——沉默比任何台词都有说服力。' },
+      { id: 'A7', label: '瑕疵保留', desc: '穿帮、笑场、设备失误——留着别删', detail: '韩国综艺的标志性手法。摄影机晃了、收音炸了、意外背景音——不删，还配字幕音效强调"这不是安排好的"。Running Man的VJ跟拍：VJ跑不动画面剧烈晃动？留着。成员吐槽摄影机没跟上？留着。逻辑是反的——越"不该出现"的瑕疵，越证明没人控制一切。剪片时留5-10%的瑕疵窗口——这些不是废片，是最值钱的真实性信号。' },
+      { id: 'A8', label: '素材开源', desc: '原始素材、数据随便查', detail: '直接开放原始材料——训练数据、投票记录、未剪辑素材——观众自己去看，不用信你说的。K-pop的"直拍"玩法就是A8的雏形：想看某个成员全场表现？给你未剪辑的全程跟拍。跟A4（线上线下对得上）组合就是双重验证闭环。当然有个风险：原始数据可能暴露你不想让人看的东西——但如果连这都不敢，你的真实性锚点本质上就不成立。' },
+      { id: 'A9', label: '第三方在场', desc: '有外人盯着，做不了假', detail: '公证人、独立裁判、外部观察员——有第三方在，观众不需要信制作方，只需要信第三方。综艺界用得不多，但在竞技和选秀里潜力巨大——电竞的裁判系统已经跑通了。第三方不一定是机构，一两个独立观察员、数据分析师都算。关键是第三方得有"叫停"的权力，不然就是个摆设。' },
+      { id: 'A10', label: '素朴表演', desc: '越不会演，越是真的', detail: '所有人表现都太完美的时候，观众默认是演的。但当一个非专业的人在镜头前手足无措——说错话、不知道看哪个机位——这种"不会演"的状态本身就是最好的真实性证据。《种地吧》的少年们在镜头前从来不演——他们真在种地，笨拙和失误就是铁证。怎么用：在专业选手里留1-2个非专业者当"真实性参照系"——他们的存在让其他人的完美也变得可信了。' }
+    ]
+  }
+];
+
+// ═══════════════════════════════════
+// STORY_MAP: 每个元素的故事片段
+// ═══════════════════════════════════
+const STORY_MAP = {
+  // ── 叙事引擎: opening + feel ──
+  E1: { opening: '一群人笨拙地开始学一件事——有人天赋异禀，有人笨得可爱，但每个人眼里都有一团火。"我不会，但我想试试"的光，从第一帧就开始闪。', feel: '你会不自觉地开始为某个人加油。不是因为他最厉害，是因为你亲眼看到了他每一次摔跤和每一次爬起来。到后来你甚至会忘了这是个节目——你是在陪一个人长大。' },
+  E2: { opening: '规则一公布，所有人都知道这不是过家家。对手很明确，目标很清楚，每一期都能感觉到有人往前迈了一步，有人被逼到了墙角。空气里弥漫着"要么赢、要么走"的紧张感。', feel: '你不是在看表演——你是在看一群人怎么面对压力。有人顶住了，有人崩了，有人逆风翻盘。那种"换我上去我可能早放弃了"的感觉，会一直揪着你。' },
+  E3: { opening: '从第一期开始就有一个钩子——你不知道下一轮会发生什么，但你没法不猜。每次公演前你都在盘算：这次谁会炸、谁会翻。节目组把线索撒得到处都是，你像个侦探一样在捡。', feel: '追这个节目最累的是脑子。每期结束你都在刷讨论区，看别人的分析和预测，然后发现自己想的跟实际差十万八千里——但下一期你还是忍不住要猜。这种"猜不对但我偏要猜"的瘾，是最难戒的。' },
+  E4: { opening: '最开始他们只是被安排在一起的陌生人。但慢慢地，有人开始等另一个人一起吃饭，有人记下了别人不能吃的东西——你开始看到一些比比赛更重要的东西在悄悄生长。', feel: '最打动你的不是谁赢了——是两个月前还互相看不顺眼的两个人，现在能在对方崩溃的时候递一张纸巾，什么都不说。你追的不是比赛，是一群人的关系史。' },
+  E5: { opening: '"如果把这12个人扔进一个完全陌生的环境里——会发生什么？"这个假设本身就是追下去的理由。规则很简单，但后果没人知道。你像一个在实验室外观察的研究员，等着看变量怎么发酵。', feel: '你会忍不住在心里做自己的预测——谁跟谁会结盟？谁会先崩溃？谁会被逼出所有人没见过的另一面？你不是在看节目，你是在等实验结果——而且每个结果都可能推翻你之前的假设。' },
+  E6: { opening: '镜头推开了那扇你一直好奇但进不去的门。凌晨两点的练习室、聚光灯背后的走廊、摄影机一停他们才露出的真实表情——你终于进来了。', feel: '你不是"观众"了——你是知道内情的人。朋友问"他们私下真的那样吗"，你能说"我看了后台的片段，其实不是"。这种"只有我知道更多"的微妙优越感，会让你一直看到底。' },
+  E7: { opening: '没有激烈的竞争，没有谁要淘汰谁。就是几个有意思的人，在一个舒服的地方，做一顿饭、聊一会儿天、发一会儿呆。你打开的时候甚至不知道自己想看到什么——但就是不关。', feel: '它不是让你兴奋，是让你安静下来。一周的焦虑和烦躁，在这一小时里被炖成了热汤。你会发现你追的不是剧情，是"有人在旁边"的感觉。这年头，能让人每周固定安静一小时的东西，不多。' },
+  E8: { opening: '从第一秒就开始笑了——不是"觉得好笑"的笑，是"没忍住"的笑。有人出了个大丑，有人接了一句你想不到的吐槽，整个场子从第一分钟就被点亮了。你不记得上一次在屏幕前笑出声是什么时候了。', feel: '每周最期待的就是这个——不需要动脑、不需要紧张、不需要被感动。就是笑。笑到室友探头问"你在看啥"。这年头，能让人每周固定笑两个小时的东西，比好剧还稀缺。' },
+  E9: { opening: '规则写得清清楚楚，但所有人的眼神都在说同一件事：怎么钻空子。你以为比的是实力，看了才知道——比的是谁更会读规则、更会算风险、更会在最后一秒翻盘。棋盘一摆好，你就知道这局有意思了。', feel: '你会不自觉地把自己代入进去。"如果是我，我这轮会选保守还是激进？"你跟着一起算、一起猜、一起被反转打脸。看完一局你觉得自己也被训练得更聪明了——虽然下次还是会算错。' },
+
+  // ── 时间结构: rhythm_feel ──
+  T1: { rhythm_feel: '每一期都有一个倒计时在滴答响。你不是被动地看——你也在紧张，因为时间不等人，错过了就是错过了。这种"来不及了"的感觉让每一分钟都变重了。' },
+  T2: { rhythm_feel: '每周固定时间，你的身体已经形成习惯了——到点就打开，像老朋友约好了一样。节奏稳定，你知道什么时候有大事件、什么时候可以喘口气。追起来很舒服，不会被突然的节奏变化打乱。' },
+  T3: { rhythm_feel: '没有"下集预告"那种编排感——你看到的就是每天都在发生的事。有时候一整期没什么大事，但就是在这些琐碎里，你忽然发现某个人变了。这种慢火炖出来的真实，任何剧本都写不出来。' },
+  T4: { rhythm_feel: '节奏飞快——只给你高潮。没有铺垫、没有过渡，一上来就是爆点。每期看完都觉得"这期太顶了"，肾上腺素还没下来就开始等下一期。不过偶尔也会好奇：那些被跳过的瞬间里，藏了什么？' },
+  T5: { rhythm_feel: '从结局倒回去看，体验很奇妙。你知道谁会走到最后，但正因为知道，每一个早期的细节都变得意味深长。那个当初最不起眼的人，每一帧都在无声地回答"他为什么能赢"。' },
+  T6: { rhythm_feel: '直播的刺激感——你不知道下一秒会发生什么，他们也不知道。翻车了？那是真翻车。哭了？那是真哭。你跟他们活在同一个时间轴上，同步紧张、同步欢呼。错过一秒就是永远错过了——所以你不敢关。' },
+  T7: { rhythm_feel: '随便刷到哪一段都能看——没有"必须从第一集追"的压力。每段三五分钟，但结尾总有一个钩子让你想点下一个。蹲坑等车、睡前饭后，随时随地来一段，不影响你跟上剧情。' },
+  T8: { rhythm_feel: '有时候一整段什么都没发生——就是有人在做饭、有人在发呆、窗外在下雨。但你不觉得无聊，你觉得"待在这儿挺好的"。这种不赶时间的悠闲感，在现在的综艺里太罕见了。它赌的是你有耐心陪内容"在场"。' },
+  T9: { rhythm_feel: '节奏不是制作组说了算——是天说了算。下雨就停工、天晴就抢收、作物死了就是死了。你没法催进度，只能跟着自然走。这种"等"本身就有一种说不清的吸引力——你不是在追节目，你是在跟土地一起等。' },
+
+  // ── 空间规则: space_feel ──
+  S1: { space_feel: '所有人被关在一起，想躲都躲不开。人际关系被压缩到了极限——三天就能走完普通环境里三个月的关系曲线。你看着四面墙，能感觉到里面的压力在涨，但你也不想让他们出去——因为密度本身就是戏。' },
+  S2: { space_feel: '有基地可以回去，也能走出去。关在一起升温，放到外面降温——两种状态的切换制造了最自然的戏剧节奏。一个在基地里吵完架的人，第二天还得跟你一起出外场面对路人——这种"想逃逃不掉"的拉扯，拿捏得恰到好处。' },
+  S3: { space_feel: '每一期都在一个新地方。新场景、新路人、新意外——永远不会觉得"又在这儿"。你会跟着他们一起好奇：下一个城市会发生什么？路上会碰到什么样的人？这种"在路上"的漂泊感本身就是最好的故事引擎。' },
+  S4: { space_feel: '台上和台下的反差是你的快乐源泉——刚才还在聚光灯下闪闪发光，下一秒就在后台抱着膝盖发呆。你享受的就是这种切换：完美和狼狈、光芒和阴影——两个世界你都看到了，而且只有你看到了。' },
+  S5: { space_feel: '没有物理空间——所有互动都在屏幕上发生。弹幕就是墙壁，社群就是后台。你会觉得你不是隔着屏幕在看——你就在这个数字空间里，跟他们呼吸同一片像素。' },
+  S6: { space_feel: '不同区域有不同的规则。走进安全区整个人就软了，走进淘汰区心脏就提起来。最有意思的是——你看着他们走进不同区域后状态的瞬间切换，像在玩一个规则随空间变化的大型真人游戏。' },
+  S7: { space_feel: '人被关在一个移动的盒子里——车里、船上、飞机上。空间在走，无聊反而催生了最神奇的内容。几个人被塞在后座，除了聊天玩游戏互相烦还能干嘛？这种"被迫亲密"比任何设计过的任务都真实，也比任何静止的封闭空间更自然。' },
+  S8: { space_feel: '在两个完全不同的世界之间跳来跳去。上午还在光鲜的舞台，下午就在简陋的宿舍。同一个人在不同的空间里像两个人——你看的就是这种反差。切换的瞬间最真实：刚才还在对镜头微笑，转过身就叹了一口气。' },
+
+  // ── 筛选机制: tension + highlight ──
+  F1: { tension: '每到评审环节你就开始紧张——评委的一句话可能改变一个人的命运。你不一定同意每句点评，但你知道这些评审是认真的。当评委说出你一直憋着的那句评价时，你会忍不住在屏幕前猛点头。' },
+  F2: { tension: '数据不会撒谎——最公平，也最残酷。你没法说"不公平"，因为数字就在那。但这种理性也让淘汰变得更冷静：不是谁不够好，是有人更好。你接受了，但心里还是有点难过。' },
+  F3: { tension: '没有比被自己人投票更扎心的了。"我以为我们是朋友"——这句话你会在弹幕里看到无数次。你不知道谁投了谁，但你知道一定有人投了自己人。这种猜疑本身就是一剂猛药，在团队里慢慢渗透。', highlight: '成员互评是人际关系最残酷的照妖镜——你以为的铁关系，一票就能现原形。' },
+  F4: { tension: '你的每一票都有后果。你会反复掂量：投实力最强的，还是投最需要机会的？投完也不敢关——得盯着票数涨，看看你的选择有没有影响结果。这种"我的选择会改变一个人的命运"的感觉，让你从观众变成了参与者。' },
+  F5: { tension: '最让人害怕也最让人尊敬的机制——能走但选择留下的人，每一个"留下"都是真实的分量。真有人走了呢？你会震惊，但你也会更相信留下来的人——因为每个人都在用脚投票。', highlight: '允许退出的系统比不允许退出的更能证明自己的价值——每一个留下都是真心，不是别无选择。' },
+  F6: { tension: '规则说了算——没有人情、没有申诉。末位淘汰、积分清零——残酷但干净。你没法说"有黑幕"，因为规则对所有人是一样的。但你也会想：规则淘汰的可能是你最想看的那个人。' },
+  F7: { tension: '没人离开——只是换了赛道。压力没那么大，但变化来了：原先的竞争者变成了导师，台前转到了幕后。你看着他们找到新位置，会有种说不上来的欣慰——"原来不赢也可以很好"。' },
+  F8: { tension: '运气说了算——所有人面对同一个不确定性，公平得让人没法抱怨。但你在屏幕前会抓狂："就差一格！再转一下就是另一个结果！"这种幸运和遗憾的随机切换，会让你的情绪像坐过山车。', highlight: '运气决定一切——当努力不再有优势时，每个人的真实反应就是最好看的部分。' },
+
+  // ── 人物网络: dynamic + highlight ──
+  C1: { dynamic: '两个人抢一个位置，你两个都喜欢——这才是最折磨的。你发现自己不是在选"谁更强"，是在选"我更希望谁实现梦想"。这种两难会让你每周都在纠结中度过，而且你两边都不想放弃。' },
+  C2: { dynamic: '把两个互相看不顺眼的人塞进同一个任务——要么你们和解，要么一起完蛋。你看着他们从互相嫌弃到不得不合作，从生硬的配合到无言的默契——这种"被迫变队友"的弧光，比任何刻意煽情都好看。' },
+  C3: { dynamic: '同样是跳舞，有人觉得天赋最重要，有人觉得汗水能弥补一切——你不需要节目组告诉你他们怎么想的，你看着他们的选择就知道了。更妙的是：你发现自己也在站队——你认同谁，可能比你觉得谁厉害更让你投入。', highlight: '对照者是选角中最值钱的设计——对同一个问题有不同答案的人聚在一起，他们自己就能吵起来，不需要剧本。' },
+  C4: { dynamic: '师傅不只是在教——在教的过程中，师傅自己的瓶颈也暴露了。你看着徒弟从零开始磕磕绊绊地成长，也看着师傅在讲"这里要注意"的时候想起自己当年也走过弯路。这种双向成长是最温柔的师徒叙事。' },
+  C5: { dynamic: '你坐在屏幕前不自觉地比较——这两个人当初差不多啊，怎么现在差了这么多？你开始疯狂回放找"分叉点"，每一次他们都做了不同的选择，回头看每一步都像命运。你甚至会在心里复盘自己的人生。', highlight: '镜像者制造了最自然的讨论——"他们为什么走向了不同的结局？"这个问题的答案，观众会帮你填满整个评论区。' },
+  C6: { dynamic: '这是淘汰时刻最催泪的关系——守护者被淘汰的时候，你觉得"盾碎了"。被护的人被淘汰的时候，守护者的自责比任何评委点评都让人难受。你会为了一对守护者和被守护者的关系，追完一整个赛程。', highlight: '守护者是最强的情感锚——只要有一对好的守护关系，淘汰环节就永远不缺泪点。' },
+  C7: { dynamic: '你看不出他们是兄弟还是什么——但你自己在脑补。一个眼神、一句话没说完、莫名的紧张——节目没说是恋爱，但你自己在看的时候已经在写了。不确定比确认有更强的吸引力，因为你的想象力填补了所有留白。' },
+  C8: { dynamic: '所有人都知道规则，但有一个人偏要在规则边缘跳舞。他在测试系统的弹性——你能容忍到什么程度？每次他踩线，所有人（包括你）都在想：这次会怎样？系统会惩罚他还是默许？', highlight: '颠覆者是综艺的调味料——一个敢于打破规则的人，能让整个系统活过来。但需要有人拉住他，不然就乱套了。' },
+  C9: { dynamic: '你知道他有秘密任务，但其他参与者不知道。信息差让你觉得自己是"自己人"——你在等，等他什么时候被发现，或者他什么时候自己暴露。每一帧你都在替其他参与者捏一把汗，而他们完全不知道发生了什么。', highlight: '潜伏者让观众从"旁观者"变成"同谋"——你知道的秘密越多，你就越投入。' },
+  C10: { dynamic: '有人在旁边说了一句"这也太离谱了吧"——你瞬间觉得"他说了我想说的"。旁观者是观众在节目里的代理人，当你觉得所有人都魔怔了的时候，他的吐槽让你确认自己没有疯。但偶尔他也被拉下水——那一刻最好笑。' },
+
+  // ── 观看契约: participation_feel ──
+  V1: { participation_feel: '你像一个站在角落里默默观察的人——不插手、不投票、不发弹幕。但正因为你不参与，你看到的东西最完整。你没有"支持谁"的压力，所以每个人你都看得到，每个细节你都没错过。' },
+  V2: { participation_feel: '你的每一个选择都有后果——投票不是"表态"，是"改变结局"。你会反复纠结、求证、讨论——因为你的一票真的能影响谁留下。这种"我有权力"的感觉一旦尝过，就离不开了。' },
+  V3: { participation_feel: '你发的弹幕他们真的在看——有人念了你的弹幕，有人回了一句。隔着屏幕的墙被你的文字击碎了。那一刻你不是"观众"，你是"在房间里的人"。你会开始更认真地发每一条弹幕——因为有人在看。' },
+  V4: { participation_feel: '你花钱买的东西是别人没有的——独家后台、提前看、专属喊话。花钱不是因为"想支持"，是因为"不想错过只有我能看到的那部分"。那种"我比一般观众多知道一点"的感觉，让你觉得值回票价。' },
+  V5: { participation_feel: '应援色是你投票选的、粉丝名是大家一起起的——每次看到那个颜色、听到那个名字，你都知道"这是我参与创造的"。这种归属感比任何一次投票都持久——因为你不是在选结果，你是在定义这个群体的身份。' },
+  V6: { participation_feel: '你在屏幕前看了三个月，终于来到现场——灯光亮起的那一刻，屏幕里的人真的站在你面前。不是"比视频里好看"那种惊叹——是"他们真的存在"那种触电感。从此你看屏幕里的他们，跟以前不一样了。' },
+  V7: { participation_feel: '你开着节目不是为了看——是让家里有声音。他们在那边做饭聊天，你在这边做自己的事。不是内容在吸引你，是那种"有人在旁边"的氛围让你放下了手机。这是一种很奇怪的契约：你不需要看，但你需要它在。' },
+  V8: { participation_feel: '节目是素材，你才是导演。你剪你想看的CP、做你的鬼畜、写你的分析——其他粉丝看了你的二创又回去重看原片。你不是内容消费者，你是内容生态的一环。官方给你素材，你还官方热度——双赢。' },
+  V9: { participation_feel: '你想看谁就看谁——不用等剪辑给镜头。想看全景就看全景，想看某个人的手部特写就看手。你不是在看节目，你是在自己当导播。每个人看到的都是不一样的版本——你的版本。这种"我的视角我做主"的自由，一旦体验过就回不去了。' },
+
+  // ── 出口设计: ending + highlight ──
+  O1: { ending: '成团夜。灯光、眼泪、拥抱——你追了三个月的答案在这一刻揭晓。入选的人哭了，没入选的人也哭了，你也在屏幕前擦了眼泪。但第二天你就开始担心：这个团能走多远？成团不是终点，是另一个故事的开始——而你不知道那个故事会不会好看。', highlight: '成团是综艺最经典的出口——稀缺感驱动了整个赛程，但真正考验的是出道后的运营能否接住观众的期待。' },
+  O2: { ending: '没有成团、没有统一终点——每个人走上台宣布自己下一步。有人签了唱片公司，有人准备去读大学，有人还没想好。你看到每个人找到了属于自己的方向——"赢"不是唯一的路，"不同"才是。这种各自精彩的结局，比任何成团都让人安心。' },
+  O3: { ending: '最后一期不是颁奖礼——是庆功宴。任务完成了，这段旅程结束了。你知道从第一天就知道会有这一天，所以没有"舍不得"的难过，只有"做完了"的满足。但你也知道——第二季的种子已经埋下了，你已经在等了。' },
+  O4: { ending: '没有"终点"——通过第一阶段的人进了更大的体系。你不需要说再见，因为下一扇门已经开了。不是告别，是升级——你看到他们走进下一段路，你知道自己还会继续看。这种"未完待续"的期待感，比任何结局都更让人放不下。', highlight: '平台留存是最聪明的出口——没有出道即巅峰的断崖，因为根本没有"出道"这个终点，只有持续的进化。' },
+  O5: { ending: '没有结局——故事还在继续。你看完最后一期，感觉到的不是"结束了"的失落，是"接下来会怎样"的好奇。这不是终点站，是换乘站——你下车前已经在期待下一班了。', highlight: '开放结局是最长线的策略——观众不会觉得"完结了该走了"，而是"还没完，我得守着"。' },
+  O6: { ending: '三个月后，回到原来的生活——但一切都变了。有人在镜头前的三个月里找到了真正的自己，有人发现自己回不去了。你看着他们回到熟悉的环境却像个局外人——这种错位感，比任何煽情都让人感慨。' },
+  O7: { ending: '没有出道日——他们一直在长大。你不需要在某个夜晚跟所有人告别，因为每一天都是在路上的。你知道最好的还没来——这种期待会把你的注意力锁住，不放。', highlight: '持续孵化是偶像培养的终极形态——没有大结局的连续剧，每一季都是新的起点，观众的陪伴没有终点。' },
+  O8: { ending: '没有统一的出口——每个人都有自己的路。有人去做了音乐，有人去开了咖啡馆，有人决定回去读书。最动人的不是"他们都赢了"，而是"每个人都找到了自己想要的"。这种没有标准答案的结局，恰恰是最真实的答案。', highlight: '多元出口是最大胆的设计——"每个人都有自己定义的成功"比"只有一个冠军"更符合这个时代的价值观。' },
+
+  // ── 真实性锚点: trust_signal ──
+  A1: { trust_signal: '摄影机像墙上的苍蝇——只记录，不插手。你知道没有人喊"卡、再来一遍"。你看到的每一个失控和崩溃都是真的——不是因为摄像机没关，是因为它从来没关过。这种不加干预的注视，本身就是一种承诺。' },
+  A2: { trust_signal: '你不需要解说告诉你"他为什么被淘汰了"——你亲眼看了他三个月的每一次迟到、每一次划水。淘汰那天的弹幕不是"凭什么"而是"早就该了"。因果链让你觉得你不是在"被告诉"——是你自己"发现"了真相，这种感觉比任何解说都有说服力。' },
+  A3: { trust_signal: '失败的画面全在——搞砸的舞台、练不下来的动作、崩溃大哭的后台。正因为你看到了这些，成功的部分才可信。你心里的逻辑很简单："如果他们真要造假，不会把这么丢脸的东西也放出来。"失败成了最好的真实性背书。' },
+  A4: { trust_signal: '节目说"训练到凌晨三点"——你刷到粉丝拍的路透，凌晨三点训练室的灯真的亮着。两边的信息对上了，真实性翻倍。你会不自觉地开始"查证"——而每一次查证都证明他们没骗你。这种"我自己验证过"的信任，比任何声明都牢固。' },
+  A5: { trust_signal: '直播——你亲眼看到的，不需要"相信"。他们在镜头前第一次听到排名时的反应、手抖、说不出话——你没有一秒怀疑"这是演的"，因为你看着它实时发生，没有任何剪辑的空间。直播的每一帧都是不可逆的真实。' },
+  A6: { trust_signal: '汗水、淤青、黑眼圈——身体不会撒谎。你看一个人的眼睛就知道他熬了几个夜。AI能造假一切——但那种"三小时体能考核后全瘫在地上没人说话"的沉默，任何技术都造不出来。身体是最原始也最难伪造的真实性证据。' },
+  A7: { trust_signal: '摄影机晃了、收音炸了、背景有人笑场了——他们没删。不但没删，还配了字幕"这一段不是计划好的"。你每次看到这些"该删但没删"的瑕疵，对节目的信任就多加一分——因为你知道，真正有剧本的人不会允许穿帮。' },
+  A8: { trust_signal: '原始数据直接开放——你想看某个成员的全场表现？给你未剪辑的全程跟拍。你不用相信制作方说的任何话——你只需要打开链接，自己去验证。这种"不信你就自己查"的底气，是最好的信任背书，也是最强的内容二创素材库。' },
+  A9: { trust_signal: '有第三方在场——不是制作方说了算。你不需要信任节目组，你只需要信任那个独立裁判、公证人、外部观察员。每次关键决策都有第三方签字——你会觉得这不是"综艺"了，这是"正规比赛"，于是每一分都有了分量。' },
+  A10: { trust_signal: '那个在镜头前不会站位、不知道该看哪个机位的人——他的手足无措就是最好的真实性证据。你看他笨拙地做每一件事，心里知道"他不是在演笨拙，他是真的不会"。他的存在让其他专业选手的表现也变得可信了——因为对照系是真的。' },
+
+  // ── 组合规则: 多元素联动的独特看点 ──
+  highlightRules: [
+    { match: ['E1', 'F5'], text: '成长引擎 + 自选退出 = "能走但选择留下来成长"——每一个"留下"都自带分量，淘汰变成了选择而非惩罚。' },
+    { match: ['E1', 'C4'], text: '成长引擎 + 师徒关系 = 经典的双线成长——徒弟在学，师傅在教的过程中也发现了自己的瓶颈。' },
+    { match: ['E2', 'F3'], text: '对抗引擎 + 成员互评 = 竞技感和人际张力双重拉满——你的对手可能就是那个你最不想面对的朋友。' },
+    { match: ['E2', 'C3'], text: '对抗引擎 + 对照者 = 对同一个目标有不同策略的人——你看的不只是谁能赢，是"谁的方式更对"的哲学辩论。' },
+    { match: ['E7', 'F7'], text: '治愈引擎 + 不淘汰/分流 = 全年龄段通杀的慢综艺黄金配方——没有人受伤，每个人都被温柔地接住了。' },
+    { match: ['E8', 'F8'], text: '幽默引擎 + 运气淘汰 = 笑料稳定产出——转盘一转，你不知道该笑还是该喊"不公平"，但不管怎样都好看。' },
+    { match: ['E9', 'F6'], text: '游戏引擎 + 系统淘汰 = "规则面前人人平等"的竞技综艺——比的是对规则的理解和博弈，不是比谁人缘好。' },
+    { match: ['S1', 'T3'], text: '封闭空间 + 实时记录 = 密度最高的真实——关在一起每天不间断拍，你看到的人际关系演化比任何剧本都复杂。' },
+    { match: ['S3', 'T4'], text: '开放世界 + 跳跃型节奏 = 每期一个新地方的公路综艺——只给你高潮，中间的路程留给你的想象力和下一季。' },
+    { match: ['S7', 'E8'], text: '移动容器 + 幽默引擎 = 旅行综艺的灵魂——几个人被关在车里，除了聊天玩游戏互相烦，还能干嘛？无聊催生了最好的喜剧。' },
+    { match: ['A1', 'A2'], text: '沉默摄影机 + 因果链 = 终极真实性体系——你不需要被告诉任何事情，你亲眼看了全程，因果自己在你脑海里浮现。' },
+    { match: ['A3', 'A6'], text: '失败展示 + 身体证据 = 最原始也最难伪造的可信度——身体不会撒谎，失败也不会。两者叠加，任何"有剧本"的质疑都不攻自破。' },
+    { match: ['A4', 'A8'], text: '线上线下对得上 + 素材开源 = 双重验证闭环——你从两个独立渠道获得了相同的信息，信任不是靠说的，是算出来的。' },
+    { match: ['C6', 'F5'], text: '守护者 + 自选退出 = 催泪双杀——守护者为保被守护者而放弃自己的机会，这不是剧本，真会发生。' },
+    { match: ['C5', 'F1'], text: '镜像者 + 专家评审 = "起点相同的两人为何结局不同"——评审的每一次点评都变成了分叉点的官方注解，观众的回放有了指南。' },
+    { match: ['O7', 'E1'], text: '持续孵化 + 成长引擎 = 没有终点的养成系——观众不是在追一季节目，是在参与一个偶像的整个人生故事。' },
+    { match: ['O5', 'E5'], text: '开放结局 + 实验引擎 = "实验还在继续"——没有结果，只有下一阶段的观察。观众的好奇心永远不会被"完结"二字掐断。' },
+    { match: ['T9', 'T1'], text: '自然节律 + 倒计时 = 农业综艺的黄金公式——天在催、地在等、时间不等人，每一分钟都有"来不及了"的紧迫，但原因是大自然，不是制作组。' },
+    { match: ['C8', 'E8'], text: '颠覆者 + 幽默引擎 = 笑到停不下来——一个敢于打破规则的搞笑担当，是综艺最值钱的资产。' },
+    { match: ['E7', 'V7'], text: '治愈引擎 + 陪伴型观看 = 慢综艺的终极契约——不是内容在吸引你，是那种"有人在旁边"的氛围让你每周都回来。' }
+  ]
+};
+
+// ═══════════════════════════════════
+// CAUSAL CHAINS: 因果推导链
+// 不是"这两个元素一起出现过"，而是"A如何导致了B"
+// ═══════════════════════════════════
+const CAUSAL_CHAINS = [
+  {
+    id: 'CC1', name: '付出绑定正反馈螺旋',
+    requires: ['F4', 'V2'],
+    steps: [
+      '观众拥有投票权 → 每次投票都是一次「我参与了」的确认',
+      '参与产生付出绑定 →「我投过票的人」比「路人」更能牵动情绪',
+      '情绪投入 → 下周继续投票 → 绑定加深',
+      '循环越久，沉没成本越高 → 观众变成「自己人」而非「观众」'
+    ],
+    boundary: '中国饭圈打投禁令下，F4+V2组合定生死已不可行。需要将投票对象从"谁走"改为"下周干什么"——参与感保留，红线不碰。',
+    china_note: 'V2+V5替代方案：投票定福利/任务/应援色，不定生死。BTS Weverse已跑通此模式。'
+  },
+  {
+    id: 'CC2', name: '真实性自我证明闭环',
+    requires: ['A1', 'A2'],
+    steps: [
+      '沉默摄影机持续记录 → 每一个细节都被保留，没有被选择性剪辑',
+      '因果链让观众自行发现规律 →「他每次迟到后第二天考核都垫底，不是巧合」',
+      '观众不需要被告知"为什么" → 他们是自己发现的',
+      '自我发现比被告知更有说服力 → 信任不是被灌输的，是自己建构的'
+    ],
+    boundary: '如果周期太短（<2周），因果链来不及建立。至少需要3个完整的事件循环（行为→后果→重复验证）。',
+    china_note: '中国观众对"演的"极度敏感。A1+A2是2026年环境下最强的反AI武器——AI能造假画面，但造不了3个月连续的因果链。'
+  },
+  {
+    id: 'CC3', name: '成长全周期可见',
+    requires: ['E1', 'T3'],
+    steps: [
+      '实时记录不间断 → 成长不是"结果告知"而是"过程见证"',
+      '从笨拙到熟练的每一帧都在 → 观众不是看到了进步，是经历了进步',
+      '失败（A3加持）让成功更真实 →「正因为看过他摔跤，才知道这次站稳不是演的」',
+      '终局时刻的情感爆发 = 整段旅程的累积释放 → 不是感动，是陪一个人走完了全程'
+    ],
+    boundary: '需要至少3个月的拍摄周期。T4跳跃型会直接破坏此链——"跳过过程=跳过成长"。',
+    china_note: '种地吧验证了中国观众对"真实成长"的饥渴。不是选秀式的"从素人到明星"，而是"从不会到会"——后者更接近普通人的生活经验。'
+  },
+  {
+    id: 'CC4', name: '封闭空间人际加速器',
+    requires: ['S1', 'C3'],
+    steps: [
+      '封闭空间剥夺逃避选项 → 冲突发生后无法"换个地方冷静"',
+      '对照者对同一问题的不同立场 → 自然产生争论，不需要剧本',
+      '每个争论都是"这个人的价值观vs那个人的价值观"→ 观众自动站队',
+      '站队=情感绑定 → 观众不是在"看"冲突，是在"参与"价值观辩论'
+    ],
+    boundary: '需要至少2-3组对照者覆盖不同维度。如果只有1组对照+其他人都一致→对照者变成"那个刺头"。',
+    china_note: '中国观众对照者的接受度取决于"吵的是什么"。吵专业问题是加分（"你们都对音乐认真"），吵人品问题是减分（"这人是不是有问题"）。'
+  },
+  {
+    id: 'CC5', name: '悬念仪式化成瘾',
+    requires: ['E3', 'T2'],
+    steps: [
+      '周期性固定节点 → 观众身体形成"到点就看"的节律',
+      '悬念让每次揭晓前充满预测冲动 → 观众在脑子里预演各种结果',
+      '预测落空或命中 → 产生讨论冲动 → 社交媒体扩散',
+      '社交讨论产生FOMO → 没看的人被卷入 → 观看基数扩大'
+    ],
+    boundary: '悬念需要"可预测空间"——如果规则不透明或随机性过强，观众放弃预测→悬念失效。每次揭晓前至少给24小时预测窗口。',
+    china_note: '微博热搜的天然适配——每周淘汰日=热搜预定。但需注意：淘汰结果上热搜可能引发"剧透反感"，需做延迟发布策略。'
+  },
+  {
+    id: 'CC6', name: '幽默+随机，笑料永动',
+    requires: ['E8', 'F8'],
+    steps: [
+      '随机淘汰/分配 → 没人能抱怨"不公平"，因为规则对所有人都一样',
+      '不可预测的结果 → 笑点不是"演"出来的，是"撞"出来的',
+      '幽默引擎让意外变成笑料而非灾难 → "就差一格！"变成笑点而非争议',
+      '放松的观看心态 → 观众不需要紧张谁赢谁输，只需要期待"这次谁又搞笑了"'
+    ],
+    boundary: '需要至少1个"敢出丑"的人。如果所有人都很在意形象，随机结果只会制造尴尬而非笑料。',
+    china_note: '韩国综艺验证了此公式（新西游记的选房游戏），中国市场同样适用。但需注意中国观众对"故意整蛊"的敏感度更高——随机结果必须真的随机，不能让人感觉被针对。'
+  },
+  {
+    id: 'CC7', name: '对抗×直播 = 真紧张',
+    requires: ['E2', 'T6'],
+    steps: [
+      '直播不可编辑 → 胜负在实时发生，没人能预知',
+      '对抗框架让每次交锋都有后果 → "输了就是输了，没有重来"',
+      '观众与选手活在同一个时间轴上 → 同步紧张、同步欢呼',
+      '错过一秒=永远错过 → 不敢关、不敢走，粘性天花板'
+    ],
+    boundary: '直播的技术门槛高（多机位、导播、网络稳定性）。翻车不是事故，但连续翻车会让观众质疑专业性。直播+对抗的容错率极低——一个技术失误可能毁掉一场关键对决。',
+    china_note: '适合电竞综艺、街舞battle等"直播不损害观赏性"的类型。不适合需要精剪的叙事型内容（成长、关系）。'
+  },
+  {
+    id: 'CC8', name: '治愈×陪伴 = 情感避风港',
+    requires: ['E7', 'V7'],
+    steps: [
+      '治愈引擎不靠冲突驱动 → 观众打开不是为了"看谁赢了"',
+      '陪伴型观看不需要全神贯注 → "开着就好，有人在旁边"',
+      '信息轰炸的时代，每周一小时的安静=稀缺资源 → 不是因为好看才看，是因为需要它',
+      '陪伴形成习惯 → 每周固定时间打开 → 不是为了内容，是为了"有人在"的感觉'
+    ],
+    boundary: '需要人物本身有意思——"慢"不等于"无聊"。如果人物无趣，慢时间=灾难。适合搭配T8慢时间+T3实时记录。',
+    china_note: '《向往的生活》验证了中国市场对陪伴型内容的需求。但新一代观众对"假慢生活"（有剧本的农家乐）已经脱敏——必须是真的慢、真的人、真的没事发生。'
+  },
+  {
+    id: 'CC9', name: '游戏×系统淘汰 = 策略竞技',
+    requires: ['E9', 'F6'],
+    steps: [
+      '游戏引擎让观众享受"看聪明人玩规则" → 比的不是力气是脑子',
+      '系统淘汰规则对所有人平等 → 赢家赢得理直气壮，输家输得无话可说',
+      '策略的多样性 → 观众可以代入不同策略派系 → "如果是我，我会选保守"',
+      '每次策略反转都是一次智力满足 → "原来还能这么玩！"'
+    ],
+    boundary: '规则必须足够透明，让观众能跟着算。如果规则复杂到观众看不懂→策略的乐趣消失→变成"看不懂但好像很厉害"。',
+    china_note: 'Running Man的中国版跑男验证了此公式在中国的可行性。但注意中国观众对"钻空子"的道德评判比韩国观众更严格——策略需保持在"聪明"而非"狡猾"的区间。'
+  },
+  {
+    id: 'CC10', name: '偶像养成长期绑定',
+    requires: ['E1', 'O7'],
+    steps: [
+      '成长引擎让观众见证"从不会到会" → 情感绑定建立在"我陪你走过"之上',
+      '持续孵化没有出道日 → 没有"出道即巅峰"的断崖 → 故事一直在进行',
+      '每个阶段有新可能 → 观众不需要在某个夜晚说再见 → "最好的还没来"',
+      '绑定时间越长，沉没成本越高 → 粉丝不是"喜欢"这个偶像，是"参与了"这个偶像的整个人生'
+    ],
+    boundary: '需要持续产内容和持续投运营。这是"没有大结局的连续剧"——对制作方的耐力是终极考验。如果内容产出跟不上，养成空窗期会让绑定松动。',
+    china_note: 'TF家族的模式验证了中国市场对长期养成的接受度。但注意中国偶像产业的政策波动——养成模式需要避开"未成年偶像"的红线。'
+  },
+  {
+    id: 'CC11', name: '镜像者×专家评审 = 分叉点的官方注解',
+    requires: ['C5', 'F1'],
+    steps: [
+      '镜像者起点相同但走向不同 → 观众自己就会比较，疯狂回放找分叉点',
+      '专家评审为每次分叉提供专业解读 → "这一刻他选了保守，那一刻他选了冒险"',
+      '观众的猜测 + 专家的确认 → 双重满足：我猜对了+专家也这么说',
+      '分叉点的每一次确认都加深观众对"选择"的思考 → 不只是在看节目，是在反思人生'
+    ],
+    boundary: '专家必须给出具体的、可验证的点评。如果专家说"我感觉不对"→观众不买账。必须说"你第二段副歌气息断了三次"→观众会点头。',
+    china_note: '中国选秀观众对"导师点评"的需求很高——不只是给分，是给成长方向的指引。PRODUCE 101的导师线之所以动人，是因为点评本身有教学价值。'
+  },
+  {
+    id: 'CC12', name: '守护者×自选退出 = 催泪双杀',
+    requires: ['C6', 'F5'],
+    steps: [
+      '守护关系建立了情感锚 → 观众为了一对守护与被守护的关系追完整季',
+      '自选退出让"留下"变成有分量的选择 → 能走但选择留下 = 真心',
+      '守护者退出 → 被守护者失去盾 → "他为了保我放弃了自己"',
+      '被守护者退出 → 守护者自责 → "我没护好" → 两个方向都是顶级催泪弹'
+    ],
+    boundary: 'F5自选退出不能频繁触发——如果每期都有人走，退出的叙事重量会迅速贬值。建议整季不超过3次退出，且每次退出必须有完整的因果铺垫。',
+    china_note: '中国观众对"主动放弃"的情感反应强烈——需要确保退出不是因为"节目太苦"或"待遇不公"，否则舆论会转向批评节目组。'
+  },
+  {
+    id: 'CC13', name: '颠覆者×幽默 = 规则边缘的笑声',
+    requires: ['C8', 'E8'],
+    steps: [
+      '颠覆者在规则边缘跳舞 → 系统被测试弹性',
+      '幽默引擎把"犯规"变成"搞笑" → 观众不生气，反而期待下一次踩线',
+      '规则守护者（必要的平衡）的无奈反应 → 对比产生喜剧',
+      '"他会不会被罚"的悬念 + "果然被罚了"的笑点 → 笑料稳定产出'
+    ],
+    boundary: '必须有至少1个"规则守护者"来平衡。如果所有人都变颠覆者→系统崩了不好看。颠覆者:守护者 ≈ 1:1 或 1:2。',
+    china_note: '李光洙在Running Man的角色是此公式的黄金标准。中国跑男的陈赫承担了类似功能。关键在于颠覆不是"捣乱"——观众能分清"聪明的犯规"和"不尊重规则"。'
+  },
+  {
+    id: 'CC14', name: '自然节律×倒计时 = 土地的紧迫感',
+    requires: ['T9', 'T1'],
+    steps: [
+      '自然节律不由制作组控制 → 麦子熟了就得收，下雨了就停工',
+      '倒计时来自自然而非人工 → 紧迫感是真实的，不是"节目组说要加速"',
+      '作物不等人 → 每一分钟的拖延都有真实的代价',
+      '"没法跟土地讨价还价" → 观众看到作物真的死了 → 丰收时没人说"演的"'
+    ],
+    boundary: '需要真实的农业生产环节。如果只是"在农田里做任务"而非真实种地→T9的魔法瞬间失效。成本高（长周期+户外拍摄+不可控天气）。',
+    china_note: '种地吧验证了T9+T1在中国的可行性。但注意：农业周期决定了播出节奏——错过播种=等下一年，这不是制作组能控制的。'
+  },
+  {
+    id: 'CC15', name: '瑕疵保留×幽默 = 穿帮即笑料',
+    requires: ['A7', 'E8'],
+    steps: [
+      '瑕疵保留让观众确认"这不是安排好的"→ 信任加分',
+      '幽默引擎把瑕疵变成笑点 → 摄影机晃了？成员吐槽"你行不行"→ 比安排好的段子更好笑',
+      '非设计的意外 = 最好的喜剧 → "这一看就不是剧本"本身就是最好的质量背书'
+    ],
+    boundary: '瑕疵保留的度需要控制。5-10%的瑕疵窗口是最佳区间——太少则假，太多则显得不专业。',
+    china_note: '韩国综艺用此手法已非常成熟。中国综艺较少用——这本身就是差异化机会。在中国"太精致反而不真实"的观众情绪下，A7是低成本高回报的信任投资。'
+  }
+];
+
+// ═══════════════════════════════════
+// BOUNDARY CONDITIONS: 失效条件库
+// 不是泛泛说"可能不好看"，而是具体到"在什么条件下、为什么、怎么修"
+// ═══════════════════════════════════
+const BOUNDARY_CONDITIONS = [
+  {
+    id: 'BC1', name: '投票疲劳',
+    requires: ['F4', 'V2'],
+    condition: '周期 > 8周且每期都有投票环节',
+    symptom: '中段投票率下降30-50%。观众从"我每周都要投"变成"投不投都一样"。核心粉丝仍会投票但路人流失。',
+    fix: '加入"条件复活"机制打断疲劳（F5的变体：被淘汰者可被投票复活一次），或缩短投票周期、减少投票频次。'
+  },
+  {
+    id: 'BC2', name: '封闭窒室',
+    requires: ['S1'],
+    condition: '封闭周期 > 3周且无退出机制且无心理支持',
+    symptom: '参与者出现心理问题（焦虑、抑郁、人际冲突升级为真实伤害）。舆论从"好看"变成"残忍"——参考早期真人秀的伦理争议。',
+    fix: '必须配F5自选退出机制作为安全阀。S1+S2混合（70%关着+30%放出去）。配备专业心理支持团队。'
+  },
+  {
+    id: 'BC3', name: '成长不可见',
+    requires: ['E1', 'T4'],
+    condition: '成长引擎主导 + 跳跃型时间结构',
+    symptom: '"他们说他进步了，但我没看到"——观众被告诉而非被展示。成长最核心的"差一点就做到了"瞬间被跳过→情感投资失去根基。',
+    fix: 'E1必须配T3实时记录。如果必须保留T4→引擎改用E5实验或E6揭秘——这两者不依赖连续时间。'
+  },
+  {
+    id: 'BC4', name: '广告信任崩塌',
+    requires: ['A1', 'A2'],
+    condition: '强真实性叙事（A1+A2+A3等多重锚点）+ 生硬广告植入',
+    symptom: '一期生硬的口播或植入，让观众瞬间从"这是真的"切换到"这是在卖东西"——前期积累的全部信任归零。种地吧的广告争议即此。',
+    fix: '品牌合作必须用场景自然融入（工具/设备赞助不口播、产品作为生活道具出现）。如果做不到→不要承诺A1级别的真实性。'
+  },
+  {
+    id: 'BC5', name: '中国市场政策红线',
+    requires: ['F4', 'V2'],
+    condition: '观众投票决定淘汰 + 打投/氪金机制',
+    symptom: '触碰饭圈乱象整治红线。青春有你3倒奶事件后，打投类选秀在中国已被禁。',
+    fix: '投票对象从"定生死"改为"定方向"：V5社群共创（投下周任务/福利/应援色/粉丝名）。保留参与感，避开红线。'
+  },
+  {
+    id: 'BC6', name: '关系功利化',
+    requires: ['F3', 'E4'],
+    condition: '成员互评淘汰 + 关系驱动',
+    symptom: '"他对我好是因为感情还是不想被淘汰？"——关系引擎最核心的"真情实感"被互评污染。观众开始怀疑每一段关系都是策略性的。',
+    fix: 'F3配E2对抗引擎——对抗框架下互评是"战术"而非"背叛"。或F3配匿名投票+不公布谁投了谁，减轻人际关系毒性。'
+  },
+  {
+    id: 'BC7', name: '悬念过载',
+    requires: ['E3', 'T1'],
+    condition: '悬念引擎 + 倒计时 + 多线并行（>2条悬念线）',
+    symptom: '观众焦虑而非期待。"到底先关心哪个？"——多悬念叠加让观众放弃跟进。从"我每个悬念都想知道答案"变成"算了等结局吧"。',
+    fix: '一次只维持1条主悬念线。次要悬念必须在主悬念揭晓后开启。T1倒计时终点=悬念解答时间点。'
+  },
+  {
+    id: 'BC8', name: '碎片叙事断裂',
+    requires: ['T7'],
+    condition: '碎片化时间结构 + 长线叙事引擎（E1成长/E4关系）',
+    symptom: '成长和关系需要连续的时间感知。"随便从哪集开始"意味着观众看不到"从A到B"的弧线——只见节点，不见过程。',
+    fix: 'T7适合配E8幽默/E6揭秘/E5实验。如果必须长线→每个碎片结尾埋钩子（开放问题），下一段开头回答，制造跨碎片的连续性。'
+  },
+  {
+    id: 'BC9', name: '出口动机错配',
+    requires: ['O5'],
+    condition: '开放结局 + 对抗引擎（E2）或成长引擎（E1）',
+    symptom: '对抗需要胜负结算，成长需要"变成什么"的终点。开放结局=没有终点→观众投资无收束。"追了三个月你告诉我没结果？"',
+    fix: 'O5只能配E4关系/E5实验/E6揭秘/E8幽默。E1和E2必须有闭环出口（O1/O2/O3中的闭合型）。'
+  },
+  {
+    id: 'BC10', name: '密度稀释',
+    requires: ['C1', 'C2', 'C3'],
+    condition: '人物关系类型 ≥ 4 种 + 人物数量 > 20',
+    symptom: '每种关系都浅尝辄止。观众说"人太多了记不住"。剪辑压力爆炸——每期要塞进所有关系线的进展。',
+    fix: '人物总数 ≤ 15。关系类型 ≤ 3。采用分层叙事：前期广度覆盖→中期聚焦8-10人的深度关系。'
+  },
+  {
+    id: 'BC11', name: '时空自悖',
+    requires: ['T3', 'S3'],
+    condition: '实时记录 + 开放世界（不停移动）',
+    symptom: '一直在移动→无法建立稳定的日常→实时记录失去了"日常感"。观众看不到重复场景中的微妙变化——而这是实时记录最值钱的部分。',
+    fix: 'T3+S2半开放是最佳折中：有基地（稳定日常）+ 可外出（新鲜刺激）。纯S3用T4跳跃型反而更自洽。'
+  }
+];
+
+// ═══════════════════════════════════
+// MARKET NOTES: 中国市场适配注解
+// ═══════════════════════════════════
+const MARKET_NOTES = [
+  {
+    id: 'MN1', category: '政策',
+    requires: ['F4', 'V2'],
+    note: '⚠️ 饭圈打投红线。2026年环境：观众投票不能决定淘汰。替代：V5社群共创（投福利/任务/应援色）、V3弹幕互动、V4付费解锁非竞技内容。'
+  },
+  {
+    id: 'MN2', category: '价值观',
+    requires: [],
+    note: '中国广电对综艺有"正能量"要求。方案中须至少包含一个"向上"元素：E1成长（奋斗精神）、E7治愈（人文关怀）、A3失败+站起来（韧性）。纯E8幽默/E9游戏而无正能量元素→审查风险。'
+  },
+  {
+    id: 'MN3', category: '受众',
+    requires: ['V7'],
+    note: '陪伴型观看在中国Z世代中需求旺盛。"开着不看也行"的契约适合B站/抖音的"背景音"场景。V7+E7（治愈）=中国慢综艺已验证的黄金公式。'
+  },
+  {
+    id: 'MN4', category: '受众',
+    requires: ['V8'],
+    note: '二创授权是中国粉丝经济的核心引擎。B站的鬼畜、小红书的分析贴、微博的CP超话——官方给素材+默许二创=免费的二次传播。K-pop已验证此模式，中国尚未被充分利用。'
+  },
+  {
+    id: 'MN5', category: '平台',
+    requires: ['T7'],
+    note: '碎片化时间结构 → 抖音/B站的天然选择。但需注意：T7与长线叙事引擎（E1/E4）矛盾。抖音综艺适合E8幽默、E6揭秘（每段独立成篇+结尾钩子）。'
+  },
+  {
+    id: 'MN6', category: '平台',
+    requires: ['T6'],
+    note: '直播在B站和抖音生态最成熟。爱奇艺/腾讯视频以点播为主→纯直播综艺在长视频平台面临排播困难。T6+S5纯数字空间→团播/虚拟偶像的天然赛道。'
+  },
+  {
+    id: 'MN7', category: '平台',
+    requires: ['E1', 'T3'],
+    note: '成长+实时记录=长视频平台的会员拉新利器（沉浸式追更→连续订阅）。短视频平台做不了这个——成长需要时长。'
+  },
+  {
+    id: 'MN8', category: '成本',
+    requires: ['S3', 'T3'],
+    note: '开放世界+实时记录=制作成本黑洞。户外多机位+长周期+不可控天气→预算至少是棚内综艺的2-3倍。种地吧的农业周期成本即为此类。'
+  },
+  {
+    id: 'MN9', category: '成本',
+    requires: ['S1', 'T2'],
+    note: '封闭空间+周期性=制作成本最可控的组合。棚内录制+固定节奏+后期剪辑→工业化生产。适合预算有限的初创团队。'
+  },
+  {
+    id: 'MN10', category: '趋势',
+    requires: ['A6', 'A7', 'A10'],
+    note: '2026年AI内容爆发→观众对"假"的敏感度达到历史峰值。身体证据(A6)+瑕疵保留(A7)+素朴表演(A10)是反AI武器——AI能造画面，造不了真实的身体反应和意外穿帮。这三者同时选→最强的"这是真的"信号。'
+  }
+];
+
+// ═══════════════════════════════════
+// PRESETS
+// ═══════════════════════════════════
+const PRESETS = {
+  chuang101: {
+    name: '创造101',
+    narrative: { dominant: ['E1'], auxiliary: ['E3'] },
+    time: ['T2'],
+    space: ['S4'],
+    filter: ['F1', 'F4'],
+    characters: ['C1', 'C4'],
+    viewing: ['V2'],
+    exit: ['O1'],
+    authenticity: ['A4']
+  },
+  zhongdi: {
+    name: '种地吧',
+    narrative: { dominant: ['E2'], auxiliary: ['E1'] },
+    time: ['T3', 'T1'],
+    space: ['S2'],
+    filter: ['F5'],
+    characters: ['C2', 'C3'],
+    viewing: ['V1'],
+    exit: ['O3'],
+    authenticity: ['A1', 'A3', 'A6']
+  },
+  chenglang: {
+    name: '乘风破浪的姐姐',
+    narrative: { dominant: ['E1'], auxiliary: ['E2'] },
+    time: ['T2'],
+    space: ['S4'],
+    filter: ['F1', 'F4'],
+    characters: ['C3', 'C1'],
+    viewing: ['V2'],
+    exit: ['O1'],
+    authenticity: ['A3', 'A6', 'A4']
+  },
+  xiangwang: {
+    name: '向往的生活',
+    narrative: { dominant: ['E7'], auxiliary: ['E4'] },
+    time: ['T8', 'T9'],
+    space: ['S1'],
+    filter: ['F7'],
+    characters: ['C6', 'C2'],
+    viewing: ['V7', 'V1'],
+    exit: ['O6'],
+    authenticity: ['A1', 'A6']
+  },
+  xiyouji: {
+    name: '新西游记',
+    narrative: { dominant: ['E8'], auxiliary: ['E4'] },
+    time: ['T4'],
+    space: ['S7', 'S3'],
+    filter: ['F6', 'F8'],
+    characters: ['C8', 'C2'],
+    viewing: ['V1'],
+    exit: ['O3'],
+    authenticity: ['A7', 'A3']
+  },
+  runningman: {
+    name: 'Running Man',
+    narrative: { dominant: ['E9'], auxiliary: ['E8'] },
+    time: ['T2', 'T1'],
+    space: ['S3', 'S1'],
+    filter: ['F6', 'F8'],
+    characters: ['C1', 'C8'],
+    viewing: ['V1'],
+    exit: ['O5'],
+    authenticity: ['A7', 'A3']
+  },
+  renshi: {
+    name: '认识的哥哥',
+    narrative: { dominant: ['E8'], auxiliary: ['E4'] },
+    time: ['T2'],
+    space: ['S1'],
+    filter: ['F7'],
+    characters: ['C8', 'C10'],
+    viewing: ['V1'],
+    exit: ['O5'],
+    authenticity: ['A7']
+  }
+};
+
+// ═══════════════════════════════════
+// STATE
+// ═══════════════════════════════════
+const state = {
+  narrative: { dominant: new Set(), auxiliary: new Set() },
+  time: new Set(),
+  space: new Set(),
+  filter: new Set(),
+  characters: new Set(),
+  viewing: new Set(),
+  exit: new Set(),
+  authenticity: new Set(),
+  layerUnlocked: [true, false, false],
+  activeGenre: null,
+  bizDept: null,
+  bizRole: null
+};
+
+
+	// ═══════════════════════════════════
+	// API CONFIG
+	// ═══════════════════════════════════
+	// ═══════════════════════════════════
+	// SERVER MODE DETECTION
+	// ═══════════════════════════════════
+	// http/https = 真实服务器 → 相对路径。file = 本地双击。其他(app://等,Obsidian) → 走本地CORS代理
+	const IS_SERVER_MODE = window.location.protocol === 'http:' || window.location.protocol === 'https:';
+	const IS_OBSIDIAN = !IS_SERVER_MODE && window.location.protocol !== 'file:';
+	const SERVER_ENDPOINT = '/api/v1/chat/completions';
+	const DIRECT_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions';
+	const PROXY_ENDPOINT = 'http://localhost:8010/v1/chat/completions';
+
+	const apiConfig = {
+  apiKey: localStorage.getItem('ds_api_key') || '',
+  model: localStorage.getItem('ds_model') || 'deepseek-v4-pro',
+	  temperature: 0.8,
+	  endpoint: IS_SERVER_MODE ? SERVER_ENDPOINT : (IS_OBSIDIAN ? PROXY_ENDPOINT : DIRECT_ENDPOINT)
+	};
+// ═══════════════════════════════════
+// ELEMENT LOOKUP
+// ═══════════════════════════════════
+const elementMap = {};
+CATEGORIES.forEach(cat => {
+  cat.elements.forEach(el => { elementMap[el.id] = el; });
+});
+
+  initCustomElements();
+
+  // Restore biz persona from localStorage
+  state.bizDept = localStorage.getItem('fg_biz_dept') || null;
+  state.bizRole = localStorage.getItem('fg_biz_role') || null;
+
+  // Sync topbar persona selects on load
+  setTimeout(function() {
+    var ds = document.getElementById('deptSelect');
+    var rs = document.getElementById('roleSelect');
+    if (ds) ds.value = state.bizDept || '';
+    if (rs) rs.value = state.bizRole || '';
+  }, 100);
+
+  // Persona change handlers (v1.12: moved from settings modal to topbar)
+  function onDeptChange(val) {
+    state.bizDept = val || null;
+    localStorage.setItem('fg_biz_dept', val);
+  }
+  function onRoleChange(val) {
+    state.bizRole = val || null;
+    localStorage.setItem('fg_biz_role', val);
+  }
+
+// ═══════════════════════════════════
+  // ═══════════════════════════════════
+  // CUSTOM ELEMENTS
+  // ═══════════════════════════════════
+  let _customIdCounter = 0;
+  window._customElements = [];
+
+  function initCustomElements() {
+    try {
+      const saved = localStorage.getItem('fg_custom_elements');
+      if (saved) {
+        window._customElements = JSON.parse(saved);
+        window._customElements.forEach(ce => {
+          const cat = CATEGORIES.find(c => c.id === ce.catId);
+          if (cat) {
+            cat.elements.push({ id: ce.id, label: ce.label, desc: ce.desc || '', detail: ce.detail || '', custom: true, layer: cat.layer });
+            elementMap[ce.id] = cat.elements[cat.elements.length - 1];
+          }
+        });
+        window._customElements.forEach(ce => {
+          const num = parseInt(ce.id.slice(1));
+          if (num > _customIdCounter) _customIdCounter = num;
+        });
+      }
+    } catch (e) {}
+  }
+
+  function saveCustomElements() {
+    localStorage.setItem('fg_custom_elements', JSON.stringify(window._customElements));
+  }
+
+  function addCustomElement(catId) {
+    const form = document.getElementById('custom-form-' + catId);
+    const labelInput = document.getElementById('custom-label-' + catId);
+    const descInput = document.getElementById('custom-desc-' + catId);
+    if (!labelInput || !form) return;
+    const label = labelInput.value.trim();
+    if (!label) { showToast('⚠️ 请输入元素名称'); return; }
+    const cat = CATEGORIES.find(c => c.id === catId);
+    if (!cat) return;
+    if (cat.elements.some(el => el.label === label)) { showToast('⚠️ 该名称已存在'); return; }
+    _customIdCounter++;
+    const id = 'U' + _customIdCounter;
+    const desc = descInput ? descInput.value.trim() : '';
+    const el = { id, label, desc, detail: desc, custom: true };
+    cat.elements.push(el);
+    elementMap[id] = el;
+    window._customElements.push({ id, label, desc, detail: desc, catId });
+    saveCustomElements();
+    labelInput.value = '';
+    if (descInput) descInput.value = '';
+    form.classList.remove('card__custom-form--visible');
+    renderAll();
+    showToast('✅ 已添加「' + label + '」');
+  }
+
+  function removeCustomElement(elId) {
+    if (!confirm('删除自定义元素「' + (elementMap[elId] ? elementMap[elId].label : elId) + '」？')) return;
+    CATEGORIES.forEach(cat => { cat.elements = cat.elements.filter(el => el.id !== elId); });
+    delete elementMap[elId];
+    state.narrative.dominant.delete(elId);
+    state.narrative.auxiliary.delete(elId);
+    ['time', 'space', 'filter', 'characters', 'viewing', 'exit', 'authenticity'].forEach(k => state[k].delete(elId));
+    window._customElements = window._customElements.filter(ce => ce.id !== elId);
+    saveCustomElements();
+    refreshAllChips();
+    hideOutput();
+    renderAll();
+    showToast('🗑️ 已删除');
+  }
+
+  function toggleCustomForm(catId) {
+    const form = document.getElementById('custom-form-' + catId);
+    if (!form) return;
+    form.classList.toggle('card__custom-form--visible');
+    if (form.classList.contains('card__custom-form--visible')) {
+      const input = document.getElementById('custom-label-' + catId);
+      if (input) setTimeout(() => input.focus(), 100);
+    }
+  }
+
+// POPOVER
+// ═══════════════════════════════════
+const popover = document.getElementById('detail-popover');
+let popoverShowTimer = null;
+let popoverHideTimer = null;
+let popoverCurrentEl = null;
+
+function showPopover(el, chip) {
+  // Clear any pending hide
+  if (popoverHideTimer) { clearTimeout(popoverHideTimer); popoverHideTimer = null; }
+
+  // If already showing for this element, keep it
+  if (popoverCurrentEl === el) return;
+  popoverCurrentEl = el;
+
+  // Delay show
+  popoverShowTimer = setTimeout(() => {
+    // Build content
+    const descText = el.desc || '';
+    popover.innerHTML = `
+      <div class="popover__header">
+        <span class="popover__id">${el.id}</span>
+        <span class="popover__label">${el.label}</span>
+      </div>
+      ${descText ? `<div class="popover__desc">${descText}</div>` : ''}
+      <div class="popover__body">${el.detail || ''}</div>
+    `;
+
+    // Position
+    const chipRect = chip.getBoundingClientRect();
+    const popoverWidth = 300;
+    const gap = 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Default: below chip, centered
+    let left = chipRect.left + chipRect.width / 2 - popoverWidth / 2;
+    let top = chipRect.bottom + gap;
+
+    // Horizontal clamping
+    if (left < 16) left = 16;
+    if (left + popoverWidth > vw - 16) left = vw - popoverWidth - 16;
+
+    // Flip above if not enough space below
+    const popoverHeight = popover.offsetHeight || 200; // estimate before measured
+    if (top + popoverHeight > vh - 16) {
+      top = chipRect.top - popoverHeight - gap;
+      // If still not enough space above, just clamp to bottom of viewport
+      if (top < 16) {
+        top = vh - popoverHeight - 16;
+      }
+    }
+
+    popover.style.left = left + 'px';
+    popover.style.top = top + 'px';
+    popover.classList.add('detail-popover--visible');
+  }, 300);
+}
+
+function hidePopover(el) {
+  if (popoverShowTimer) { clearTimeout(popoverShowTimer); popoverShowTimer = null; }
+  popoverCurrentEl = null;
+
+  popoverHideTimer = setTimeout(() => {
+    popover.classList.remove('detail-popover--visible');
+  }, 200);
+}
+
+// ═══════════════════════════════════
+// RENDER
+// ═══════════════════════════════════
+function renderAll() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+
+  let lastLayer = 0;
+  CATEGORIES.forEach(cat => {
+    // Insert layer divider when entering a new layer
+    if (cat.layer !== lastLayer) {
+      lastLayer = cat.layer;
+      grid.appendChild(createLayerDivider(cat.layer));
+    }
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.layer = cat.layer;
+    card.dataset.catId = cat.id;
+    if (cat.layer > 1) card.classList.add('card--locked');
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'card__header';
+    header.innerHTML = `
+      <span class="card__emoji">${cat.emoji}</span>
+      <div>
+        <div class="card__title">${cat.name}</div>
+        <div class="card__subtitle">${cat.subtitle}</div>
+      </div>`;
+    card.appendChild(header);
+
+    // Hint
+    const hint = document.createElement('div');
+    hint.className = 'card__hint';
+    hint.textContent = cat.hint;
+    card.appendChild(hint);
+
+    // Chips
+    if (cat.dualMode) {
+      // Dominant row
+      const domLabel = document.createElement('div');
+      domLabel.className = 'chip-row__label';
+      domLabel.textContent = '◆ 主导引擎';
+      card.appendChild(domLabel);
+      const domRow = document.createElement('div');
+      domRow.className = 'chip-row';
+      cat.elements.forEach(el => {
+        const chip = createChip(el, 'dominant', () => toggleNarrative(el.id, 'dominant'));
+        domRow.appendChild(chip);
+      });
+      card.appendChild(domRow);
+
+      // Auxiliary row
+      const auxLabel = document.createElement('div');
+      auxLabel.className = 'chip-row__label';
+      auxLabel.textContent = '◇ 辅助引擎';
+      card.appendChild(auxLabel);
+      const auxRow = document.createElement('div');
+      auxRow.className = 'chip-row';
+      cat.elements.forEach(el => {
+        const chip = createChip(el, 'auxiliary', () => toggleNarrative(el.id, 'auxiliary'));
+        auxRow.appendChild(chip);
+      });
+      card.appendChild(auxRow);
+    } else {
+      const row = document.createElement('div');
+      row.className = 'chip-row';
+      cat.elements.forEach(el => {
+        const chip = createChip(el, 'selected', () => toggleElement(cat.id, el.id));
+        row.appendChild(chip);
+      });
+      card.appendChild(row);
+    }
+
+    // Custom element toggle + form
+    const customToggle = document.createElement('button');
+    customToggle.className = 'card__custom-toggle';
+    customToggle.textContent = '+ 自定义';
+    customToggle.onclick = () => toggleCustomForm(cat.id);
+    card.appendChild(customToggle);
+
+    const customForm = document.createElement('div');
+    customForm.className = 'card__custom-form';
+    customForm.id = 'custom-form-' + cat.id;
+    customForm.innerHTML = '<input type="text" id="custom-label-' + cat.id + '" placeholder="元素名称" onkeydown="if(event.keyCode===13)addCustomElement(\'' + cat.id + '\')">' +
+      '<input type="text" id="custom-desc-' + cat.id + '" placeholder="简述（可选）" onkeydown="if(event.keyCode===13)addCustomElement(\'' + cat.id + '\')">' +
+      '<button class="btn--add" onclick="addCustomElement(\'' + cat.id + '\')">添加</button>';
+    card.appendChild(customForm);
+
+    grid.appendChild(card);
+  });
+}
+
+function createChip(el, mode, onClick) {
+  const chip = document.createElement('button');
+  chip.className = 'chip';
+  if (el.custom) chip.classList.add('chip--custom');
+  chip.dataset.elId = el.id;
+  chip.dataset.mode = mode;
+  chip.innerHTML = '<span class="badge"></span>' + (el.custom ? '✏️ ' : '') + el.label;
+  if (el.custom) {
+    const del = document.createElement('span');
+    del.className = 'chip__del';
+    del.textContent = '×';
+    del.addEventListener('click', (e) => { e.stopPropagation(); removeCustomElement(el.id); });
+    chip.appendChild(del);
+  }
+  chip.addEventListener('click', onClick);
+  chip.addEventListener('mouseenter', () => showPopover(el, chip));
+  chip.addEventListener('mouseleave', () => hidePopover(el));
+		chip.addEventListener('touchend', (e) => {
+			e.preventDefault();
+			showPopover(el, chip);
+		});
+  return chip;
+}
+
+function refreshAllChips() {
+  CATEGORIES.forEach(cat => {
+    if (cat.dualMode) {
+      cat.elements.forEach(el => {
+        const domChip = document.querySelector(`.chip[data-el-id="${el.id}"][data-mode="dominant"]`);
+        const auxChip = document.querySelector(`.chip[data-el-id="${el.id}"][data-mode="auxiliary"]`);
+        updateChipState(domChip, 'dominant', state.narrative.dominant.has(el.id));
+        updateChipState(auxChip, 'auxiliary', state.narrative.auxiliary.has(el.id));
+      });
+    } else {
+      cat.elements.forEach(el => {
+        const chip = document.querySelector(`.chip[data-el-id="${el.id}"][data-mode="selected"]`);
+        updateChipState(chip, 'selected', state[cat.id].has(el.id));
+      });
+    }
+  });
+}
+
+function updateChipState(chip, mode, active) {
+  if (!chip) return;
+  chip.classList.remove('chip--selected', 'chip--dominant', 'chip--auxiliary');
+  if (active) chip.classList.add(`chip--${mode}`);
+}
+
+// ═══════════════════════════════════
+// INTERACTIONS
+// ═══════════════════════════════════
+function toggleNarrative(elId, mode) {
+  // L1 change → protection
+  if (!handleL1Change()) return;
+
+  const other = mode === 'dominant' ? 'auxiliary' : 'dominant';
+
+  if (state.narrative[other].has(elId)) {
+    state.narrative[other].delete(elId);
+  }
+
+  if (state.narrative[mode].has(elId)) {
+    state.narrative[mode].delete(elId);
+  } else {
+    state.narrative[mode].clear();
+    state.narrative[mode].add(elId);
+  }
+
+  refreshAllChips();
+  hideOutput();
+  syncLayerState();
+}
+
+function toggleElement(catId, elId) {
+  const cat = CATEGORIES.find(function(c) { return c.id === catId; });
+  if (cat && cat.layer === 1) {
+    if (!handleL1Change()) return;
+  }
+  const set = state[catId];
+  if (set.has(elId)) {
+    set.delete(elId);
+  } else {
+    set.add(elId);
+  }
+  refreshAllChips();
+  hideOutput();
+  syncLayerState();
+}
+
+// ═══════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════
+function clearAll() {
+  state.narrative.dominant.clear();
+  state.narrative.auxiliary.clear();
+  ['time', 'space', 'filter', 'characters', 'viewing', 'exit', 'authenticity'].forEach(k => state[k].clear());
+  state.layerUnlocked = [true, false, false];
+  state.activeGenre = null;
+  document.querySelectorAll('.card[data-layer="2"], .card[data-layer="3"]').forEach(function(c) { c.classList.add('card--locked'); });
+  ['2','3'].forEach(function(n) {
+    var desc = document.querySelector('[data-layer-desc="' + n + '"]');
+    if (desc) desc.textContent = '🔒 完成 L' + (parseInt(n) - 1) + ' 后解锁';
+  });
+  var genreSelect = document.getElementById('genreSelect');
+  if (genreSelect) genreSelect.value = '';
+  resetL1Hints();
+  clearSuggested();
+  refreshAllChips();
+  hideOutput();
+  document.getElementById('outputTitle').value = '未命名方案';
+}
+
+function randomize() {
+  clearAll();
+
+  const narEls = CATEGORIES[0].elements;
+  const domIdx = Math.floor(Math.random() * narEls.length);
+  let auxIdx = Math.floor(Math.random() * narEls.length);
+  while (auxIdx === domIdx) auxIdx = Math.floor(Math.random() * narEls.length);
+  state.narrative.dominant.add(narEls[domIdx].id);
+  state.narrative.auxiliary.add(narEls[auxIdx].id);
+
+  const randomPick = (arr, min, max) => {
+    const count = min + Math.floor(Math.random() * (max - min + 1));
+    const shuffled = [...arr].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
+  };
+
+  CATEGORIES.slice(1).forEach(cat => {
+    const ids = cat.elements.map(e => e.id);
+    let min = 1, max = Math.min(3, ids.length);
+    if (cat.id === 'filter') { min = 2; max = 4; }
+    if (cat.id === 'characters') { min = 2; max = 3; }
+    if (cat.id === 'viewing') { min = 1; max = 2; }
+    if (cat.id === 'exit') { min = 1; max = 2; }
+    if (cat.id === 'authenticity') { min = 2; max = 3; }
+    const picks = randomPick(ids, min, max);
+    picks.forEach(id => state[cat.id].add(id));
+  });
+
+  refreshAllChips();
+  document.getElementById('outputTitle').value = '随机方案';
+  state.layerUnlocked = [true, true, true];
+  document.querySelectorAll('.card--locked').forEach(function(c) { c.classList.remove('card--locked'); });
+  ['2','3'].forEach(function(n) {
+    var desc = document.querySelector('[data-layer-desc="' + n + '"]');
+    if (desc) desc.textContent = n === '2' ? '在发端引擎基础上丰富方案' : '脱离时间线，回头审视整体';
+  });
+  generate();
+}
+
+function applyPreset(presetKey) {
+  if (!presetKey || !PRESETS[presetKey]) return;
+  const p = PRESETS[presetKey];
+  clearAll();
+  p.narrative.dominant.forEach(id => state.narrative.dominant.add(id));
+  p.narrative.auxiliary.forEach(id => state.narrative.auxiliary.add(id));
+  p.time.forEach(id => state.time.add(id));
+  p.space.forEach(id => state.space.add(id));
+  p.filter.forEach(id => state.filter.add(id));
+  p.characters.forEach(id => state.characters.add(id));
+  p.viewing.forEach(id => state.viewing.add(id));
+  p.exit.forEach(id => state.exit.add(id));
+  p.authenticity.forEach(id => state.authenticity.add(id));
+
+  refreshAllChips();
+  document.getElementById('outputTitle').value = p.name;
+  state.layerUnlocked = [true, true, true];
+  document.querySelectorAll('.card--locked').forEach(function(c) { c.classList.remove('card--locked'); });
+  ['2','3'].forEach(function(n) {
+    var desc = document.querySelector('[data-layer-desc="' + n + '"]');
+    if (desc) desc.textContent = n === '2' ? '在发端引擎基础上丰富方案' : '脱离时间线，回头审视整体';
+  });
+  generate();
+}
+
+// ═══════════════════════════════════
+// GENERATE OUTPUT
+// ═══════════════════════════════════
+function hasAnySelection() {
+  if (state.narrative.dominant.size > 0) return true;
+  if (state.narrative.auxiliary.size > 0) return true;
+  return ['time', 'space', 'filter', 'characters', 'viewing', 'exit', 'authenticity']
+    .some(k => state[k].size > 0);
+}
+
+function hideOutput() {
+  document.getElementById('output').classList.remove('output--visible');
+  document.getElementById('btnCopy').style.display = 'none';
+  document.getElementById('btnExport').style.display = 'none';
+	  document.getElementById('aiResults').innerHTML = '';
+	  hideDiagnosisReport();
+}
+
+function generate() {
+  const output = document.getElementById('output');
+  const body = document.getElementById('outputBody');
+  const btnCopy = document.getElementById('btnCopy');
+  const btnExport = document.getElementById('btnExport');
+
+  if (!hasAnySelection()) {
+    body.innerHTML = `<div class="empty-hint"><span class="emoji">🎯</span><p>请先选择核心元素，再点击「生成方案」</p></div>`;
+    output.classList.add('output--visible');
+    btnCopy.style.display = 'none';
+    btnExport.style.display = 'none';
+    return;
+  }
+
+  let html = '';
+
+
+  // ── Pitch: 方案简介 ──
+  html += '<h3>📖 方案简介</h3>';
+  html += `<div class="output__pitch">${generatePitch()}</div>`;
+
+  // ── Viewer Journey (collapsed by default) ──
+  html += '<details style="margin-bottom:16px;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden">';
+  html += '<summary style="cursor:pointer;padding:10px 16px;font-size:0.8125rem;font-weight:700;color:var(--text-muted);background:#fdf9f4;user-select:none;letter-spacing:0.02em;text-transform:uppercase">👀 观众旅程 ▸</summary>';
+  html += `<div style="padding:12px 16px">${generateViewerJourney()}</div></details>`;
+
+  // ── Highlights ──
+  html += '<h3>💡 核心看点</h3>';
+  html += `<div class="output__highlights">${generateHighlights()}</div>`;
+
+  // ── Causal Chains: 因果推导 ──
+  html += '<h3>🧠 因果推导链</h3>';
+  html += `<div class="output__causal">${generateCausalAnalysis()}</div>`;
+
+  // ── Anti-Pattern Cases: 逆规律案例 ──
+  const antiHtml = generateAntiCases();
+  if (antiHtml) {
+    html += '<h3>🔮 逆规律案例</h3>';
+    html += '<div class="output__anti">' + antiHtml + '</div>';
+  }
+
+  // ── Boundary Conditions: 失效条件 ──
+  html += '<h3>⚠️ 边界条件 & 失效分析</h3>';
+  html += `<div class="output__boundary">${generateBoundaryConditions()}</div>`;
+
+  // ── Market Notes: 中国市场适配 ──
+  html += '<h3>🌏 中国市场适配</h3>';
+  html += `<div class="output__market">${generateMarketNotes()}</div>`;
+
+  // ── Formula ──
+  html += '<h3>🧬 组合公式</h3>';
+  html += `<div class="output__formula">${generateFormula()}</div>`;
+
+  body.innerHTML = html;
+  output.classList.add('output--visible');
+  btnCopy.style.display = 'inline-flex';
+  btnExport.style.display = 'inline-flex';
+	  // Clear previous AI results on regenerate
+	  document.getElementById('aiResults').innerHTML = '';
+
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function generateDescription() {
+  const parts = [];
+  const domEls = [...state.narrative.dominant].map(id => elementMap[id]);
+  const auxEls = [...state.narrative.auxiliary].map(id => elementMap[id]);
+
+  if (domEls.length > 0) {
+    const domNames = domEls.map(e => e.label).join('、');
+    const domDesc = domEls.map(e => e.desc).join('，');
+    parts.push(`主打<strong>${domNames}</strong>（${domDesc}）`);
+  }
+  if (auxEls.length > 0) {
+    const auxNames = auxEls.map(e => e.label).join('、');
+    const auxDesc = auxEls.map(e => e.desc).join('，');
+    parts.push(`辅助<strong>${auxNames}</strong>（${auxDesc}）`);
+  }
+
+  const spaceEls = [...state.space].map(id => elementMap[id]);
+  if (spaceEls.length > 0) {
+    const spaceNames = spaceEls.map(e => e.label).join(' + ');
+    parts.push(`空间：<strong>${spaceNames}</strong>`);
+  }
+
+  const timeEls = [...state.time].map(id => elementMap[id]);
+  if (timeEls.length > 0) {
+    const timeNames = timeEls.map(e => e.label).join(' + ');
+    parts.push(`节奏：<strong>${timeNames}</strong>`);
+  }
+
+  const charEls = [...state.characters].map(id => elementMap[id]);
+  if (charEls.length > 0) {
+    const charNames = charEls.map(e => e.label).join('、');
+    parts.push(`人物关系靠<strong>${charNames}</strong>撑起来`);
+  }
+
+  const filterEls = [...state.filter].map(id => elementMap[id]);
+  if (filterEls.length > 0) {
+    const filterNames = filterEls.map(e => e.label).join(' + ');
+    parts.push(`筛选用<strong>${filterNames}</strong>`);
+  }
+
+  const viewEls = [...state.viewing].map(id => elementMap[id]);
+  if (viewEls.length > 0) {
+    const viewNames = viewEls.map(e => e.label).join(' + ');
+    parts.push(`观众通过<strong>${viewNames}</strong>来参与`);
+  }
+
+  const exitEls = [...state.exit].map(id => elementMap[id]);
+  if (exitEls.length > 0) {
+    const exitNames = exitEls.map(e => e.label).join(' + ');
+    parts.push(`出口：<strong>${exitNames}</strong>`);
+  }
+
+  const authEls = [...state.authenticity].map(id => elementMap[id]);
+  if (authEls.length > 0) {
+    const authNames = authEls.map(e => e.label).join('、');
+    parts.push(`真实感靠<strong>${authNames}</strong>来撑`);
+  }
+
+  if (parts.length === 0) return '还没选够元素，先点点上面的标签吧。';
+  return parts.join('，') + '。';
+}
+
+function generateFormula() {
+  const lines = [];
+  lines.push('方案 =');
+
+  const name = id => elementMap[id] ? elementMap[id].label : id;
+
+  const dom = [...state.narrative.dominant];
+  const aux = [...state.narrative.auxiliary];
+  if (dom.length > 0) lines.push('  主导引擎: ' + dom.map(name).join(' + '));
+  if (aux.length > 0) lines.push('  辅助引擎: ' + aux.map(name).join(' + '));
+
+  ['time', 'space', 'filter', 'characters', 'viewing', 'exit', 'authenticity'].forEach(k => {
+    const vals = [...state[k]];
+    const labels = {
+      time: '时间结构', space: '空间规则', filter: '筛选机制',
+      characters: '人物网络', viewing: '观看契约', exit: '出口设计', authenticity: '真实性锚点'
+    };
+    if (vals.length > 0) {
+      lines.push('  + ' + labels[k] + ': ' + vals.map(name).join(' + '));
+    }
+  });
+
+  return lines.join('\n');
+}
+
+// ═══════════════════════════════════
+// NEW: 方案简介
+// ═══════════════════════════════════
+function generatePitch() {
+  const domEls = [...state.narrative.dominant].map(id => elementMap[id]);
+  const auxEls = [...state.narrative.auxiliary].map(id => elementMap[id]);
+  const spaceEls = [...state.space].map(id => elementMap[id]);
+  const timeEls = [...state.time].map(id => elementMap[id]);
+  const filterEls = [...state.filter].map(id => elementMap[id]);
+  const charEls = [...state.characters].map(id => elementMap[id]);
+  const viewEls = [...state.viewing].map(id => elementMap[id]);
+  const exitEls = [...state.exit].map(id => elementMap[id]);
+  const authEls = [...state.authenticity].map(id => elementMap[id]);
+
+  const title = document.getElementById('outputTitle').value || '未命名方案';
+  const domEngine = domEls.length > 0 ? domEls[0].label : '多元内容';
+  const auxEngine = auxEls.length > 0 ? auxEls[0].label : '';
+  const enginePhrase = auxEngine ? `${domEngine}为主、${auxEngine}为辅` : domEngine;
+  const spaceDesc = spaceEls.length > 0 ? spaceEls.map(e => e.label).join('与') + '交织的环境中' : '精心设计的场景中';
+  const timeDesc = timeEls.length > 0 ? timeEls.map(e => e.label).join('配合') + '的节奏' : '张弛有度的节奏';
+  const filterDesc = filterEls.length > 0 ? filterEls.map(e => e.label).join('与') : '综合评估';
+  const charDesc = charEls.length > 0 ? charEls.map(e => e.label).join('、') : '自然形成的关系';
+  const viewDesc = viewEls.length > 0 ? viewEls.map(e => e.label).join('和') : '沉浸式观看';
+  const exitDesc = exitEls.length > 0 ? exitEls.map(e => e.label).join(' → ') : '自然收束';
+  const authDesc = authEls.length > 0 ? authEls.map(e => e.label).join('与') : '真诚的记录';
+
+  return '<p>《' + title + '》是一档以<strong>' + enginePhrase + '</strong>为核心驱动力的综艺节目。</p><p>节目在<strong>' + spaceDesc + '</strong>展开，采用<strong>' + timeDesc + '</strong>推进叙事。选手的去留由<strong>' + filterDesc + '</strong>决定，人物关系围绕<strong>' + charDesc + '</strong>构建。观众以<strong>' + viewDesc + '</strong>的方式参与其中，最终的出口是<strong>' + exitDesc + '</strong>。</p><p>而<strong>' + authDesc + '</strong>——这些真实性锚点保证了节目中的每一帧都有可信的根基，让观众不需要“选择相信”，而是自然而然地投入。</p>';
+}
+
+// ═══════════════════════════════════
+// NEW: 观众旅程
+// ═══════════════════════════════════
+function generateViewerJourney() {
+  const parts = [];
+  const domIds = [...state.narrative.dominant];
+  const auxIds = [...state.narrative.auxiliary];
+  const allNarIds = [...domIds, ...auxIds];
+  const openings = [];
+  allNarIds.forEach(id => { if (STORY_MAP[id] && STORY_MAP[id].opening) openings.push(STORY_MAP[id].opening); });
+  if (openings.length > 0) {
+    parts.push('<div style="margin-bottom:16px"><span style="color:var(--selected);font-weight:700;font-size:0.9375rem">🟢 刚入坑的时候</span><br><span style="color:var(--text)">' + openings.join('<br><br>') + '</span></div>');
+  } else {
+    parts.push('<div style="margin-bottom:16px"><span style="color:var(--selected);font-weight:700;font-size:0.9375rem">🟢 刚入坑的时候</span><br><span style="color:var(--text)">你打开第一期，被这个设定吸引住了——你想看看接下来会发生什么。</span></div>');
+  }
+  const midParts = [];
+  [...state.time].forEach(id => { if (STORY_MAP[id] && STORY_MAP[id].rhythm_feel) midParts.push(STORY_MAP[id].rhythm_feel); });
+  [...state.space].forEach(id => { if (STORY_MAP[id] && STORY_MAP[id].space_feel) midParts.push(STORY_MAP[id].space_feel); });
+  [...state.filter].forEach(id => { if (STORY_MAP[id] && STORY_MAP[id].tension) midParts.push(STORY_MAP[id].tension); });
+  [...state.characters].forEach(id => { if (STORY_MAP[id] && STORY_MAP[id].dynamic) midParts.push(STORY_MAP[id].dynamic); });
+  [...state.viewing].forEach(id => { if (STORY_MAP[id] && STORY_MAP[id].participation_feel) midParts.push(STORY_MAP[id].participation_feel); });
+  if (midParts.length > 0) {
+    const picked = midParts.length <= 3 ? midParts : [midParts[Math.floor(midParts.length * 0.2)], midParts[Math.floor(midParts.length * 0.5)], midParts[Math.floor(midParts.length * 0.8)]];
+    parts.push('<div style="margin-bottom:16px"><span style="color:var(--dominant);font-weight:700;font-size:0.9375rem">🟡 追到中段的时候</span><br><span style="color:var(--text)">' + picked.join('<br><br>') + '</span></div>');
+  } else {
+    parts.push('<div style="margin-bottom:16px"><span style="color:var(--dominant);font-weight:700;font-size:0.9375rem">🟡 追到中段的时候</span><br><span style="color:var(--text)">你已经开始关心这些人了——他们的输赢、他们的关系、他们的每一次选择都牵着你的情绪。</span></div>');
+  }
+  const endings = [];
+  [...state.exit].forEach(id => { if (STORY_MAP[id] && STORY_MAP[id].ending) endings.push(STORY_MAP[id].ending); });
+  [...state.authenticity].forEach(id => { if (STORY_MAP[id] && STORY_MAP[id].trust_signal) endings.push(STORY_MAP[id].trust_signal); });
+  if (endings.length > 0) {
+    const pickedEndings = endings.length <= 2 ? endings : [endings[0], endings[endings.length - 1]];
+    parts.push('<div><span style="color:#f87171;font-weight:700;font-size:0.9375rem">🔴 到最后的时候</span><br><span style="color:var(--text)">' + pickedEndings.join('<br><br>') + '</span></div>');
+  } else {
+    parts.push('<div><span style="color:#f87171;font-weight:700;font-size:0.9375rem">🔴 到最后的时候</span><br><span style="color:var(--text)">当一切结束，你关掉最后一期——你意识到你不是看完了一个节目，你是陪伴了一段人生。</span></div>');
+  }
+  return parts.join('');
+}
+
+// ═══════════════════════════════════
+// NEW: 核心看点
+// ═══════════════════════════════════
+function generateHighlights() {
+  const highlights = [];
+  const selectedIds = new Set();
+  Object.keys(state).forEach(catKey => {
+    if (catKey === 'narrative') { state.narrative.dominant.forEach(id => selectedIds.add(id)); state.narrative.auxiliary.forEach(id => selectedIds.add(id)); }
+    else if (catKey === 'layerUnlocked' || catKey === 'activeGenre' || catKey === 'bizDept' || catKey === 'bizRole') { /* skip */ } else { state[catKey].forEach(id => selectedIds.add(id)); }
+  });
+  if (STORY_MAP.highlightRules) {
+    STORY_MAP.highlightRules.forEach(rule => { if (rule.match.every(id => selectedIds.has(id))) highlights.push(rule.text); });
+  }
+  selectedIds.forEach(id => { if (STORY_MAP[id] && STORY_MAP[id].highlight) highlights.push(STORY_MAP[id].highlight); });
+  const unique = [...new Set(highlights)];
+  const capped = unique.slice(0, 5);
+  if (capped.length === 0) return '<div style="color:var(--text-muted);padding:12px;font-size:0.9375rem">选择更多元素组合，系统将自动提炼核心看点。</div>';
+  return capped.map((h, i) => '<div style="padding:10px 14px;background:var(--card);border-radius:6px;line-height:1.7;border-left:3px solid var(--accent)"><span style="color:var(--accent);font-weight:700;margin-right:6px">0' + (i + 1) + '</span><span style="color:var(--text)">' + h + '</span></div>').join('');
+}
+
+// ═══════════════════════════════════
+
+// ═══════════════════════════════════
+// ANTI_PATTERN_CASES: 逆规律案例库 (v1.7)
+// ═══════════════════════════════════
+const ANTI_PATTERN_CASES = [
+  { id:'AP1', name:'新西游记：没有胜负的综艺', genre:'travel',
+    brokenRule:'传统综艺需要胜负或悬念驱动（对抗引擎E2/悬念引擎E3），但新西游记证明了"好笑本身就是目的"',
+    conditions:['有姜虎东+李秀根级别的主持人化学反应','移动容器（S7）强制共处制造自然互动','运气机制（F8）让"不公平"变成笑料'],
+    attribution:'幽默引擎（E8）+ 颠覆者角色（C8）= 观众不需要在乎输赢，只需要期待"这次谁又搞笑了"',
+    reusable:'有 2+ 个敢于出丑的核心人物，且移动空间限制逃避',
+    notReusable:'纯棚内录制、成员都在意形象',
+    relatedChains:['CC6','CC13'] },
+  { id:'AP2', name:'种地吧：素人做真农活', genre:'survival',
+    brokenRule:'需要明星/流量吸引初始观众 —— 纯素人+农业题材被认为"没人看"',
+    conditions:['自然节律（T9）让时间压力来自天而非制作组','失败展示（A3）+身体证据（A6）= 真实不可伪造','成长引擎（E1）全周期可见——从播种到收获的完整闭环'],
+    attribution:'真实性锚点密度（A1+A2+A3+A6+T9）达到临界质量 → 观众不再要求"明星"，转而要求"真实"',
+    reusable:'有真实的、不可造假的体力劳动/技能学习过程，且时间跨度≥3个月',
+    notReusable:'棚内录制、短期（<1个月）、可以用替身的体力劳动',
+    relatedChains:['CC3','CC14'] },
+  { id:'AP3', name:'乘风破浪的姐姐：逆年龄选秀', genre:'talent_show',
+    brokenRule:'选秀节目需要年轻（18-25岁）参与者 —— 30+被认为"过了巅峰"',
+    conditions:['参与者已有知名度→观众自带情感绑定','对抗引擎（E2）对手是"年龄偏见"而非彼此','出口设计O8各走各路→没有人被"成团"定义'],
+    attribution:'把"年龄劣势"重新定义为"人生经验优势"——镜像绑定（观众看到自己）> 审美绑定（观众仰望偶像）',
+    reusable:'参与者与目标观众的处境高度相似（镜像绑定生效），且技能差异不是核心看点',
+    notReusable:'参与者没有社会知名度（新人需要被"发现"，30+新人缺乏先天优势）',
+    relatedChains:[] },
+  { id:'AP4', name:'认识的哥哥：教室即片场', genre:'observation',
+    brokenRule:'综艺需要旅行/任务/比赛 —— 固定教室+固定角色+无外部目标被认为"没内容"',
+    conditions:['颠覆者角色（C8）扎堆→每个人都在测试"教室"规则的弹性','旁观者角色（C10）做观众嘴替→提供外部视角','幽默引擎（E8）主导——好笑本身就是内容'],
+    attribution:'固定空间+固定角色→关系深度碾压任何外部任务。观众的每周期待不是"发生了什么"，是"这群人又怎么互相逗了"',
+    reusable:'有稳定的核心班底（≥5人），且已有成熟的化学反应',
+    notReusable:'新组建的临时班底、频繁换人',
+    relatedChains:['CC13'] },
+  { id:'AP5', name:'向往的生活：什么都没有发生', genre:'observation',
+    brokenRule:'综艺需要事件驱动 ——"就是做饭聊天发呆"被认为撑不起一集',
+    conditions:['治愈引擎（E7）+ 陪伴型观看（V7）= 观众不是追内容，是追"有人在旁边"的感觉','慢时间（T8）——空白也是内容','何炅+黄磊的主持人组合→自带信任和温暖感'],
+    attribution:'2020s信息过载→"每周一小时的安静"从"无聊"变成"稀缺资源"。观众打开不是为了看好内容，是为了"有人在旁边"',
+    reusable:'社会情绪处于焦虑/过载期，且核心人物有天然的温暖感和可信度',
+    notReusable:'社会情绪处于"需要刺激"的阶段（如疫后报复性消费期）',
+    relatedChains:['CC8'] },
+  { id:'AP6', name:'换乘恋爱：前任比陌生人更刺激', genre:'dating',
+    brokenRule:'恋综需要陌生人相遇 —— 前任关系被认为"太尴尬/太沉重/不适合综艺"',
+    conditions:['关系引擎（E4）+ 揭秘引擎（E6）叠加→观众同时追"关系怎么变"和"过去发生了什么"','暧昧者C7+对照者C3→"新欢vs旧爱"的对照是天然的价值观辩论','观看契约V1纯围观——不投票不干预，让复杂关系自然演化'],
+    attribution:'"前任"不是bug是feature——每对前任都带着一段观众不知道的历史，好奇心驱动>尴尬感',
+    reusable:'参与者之间有真实的、有厚度的过往关系（不限于恋爱，可以是同学/前同事/旧友）',
+    notReusable:'参与者之间关系太浅（只见过几次）、或关系创伤太新（<6个月）',
+    relatedChains:['CC4'] },
+  { id:'AP7', name:'街头女战士：没有偶像的舞蹈比赛', genre:'talent_show',
+    brokenRule:'舞蹈类节目需要偶像/明星引流 —— 纯职业舞者被认为"太小众"',
+    conditions:['对抗引擎（E2）纯粹——对手是"另一支舞团"，不是"人气票"','F1专家评审（舞者互评）+ F2客观数据→权威来自同行认可','A6身体证据→舞蹈的身体极限无法伪造'],
+    attribution:'去偶像化→观众注意力从"追星"转向"欣赏技艺"。审美绑定（被舞技震撼）替代了粉丝绑定',
+    reusable:'参与者技能水平远超普通观众，且评价标准客观可见',
+    notReusable:'参与者技能水平与观众差距不大（"我也能试试"→没有审美绑定）',
+    relatedChains:['CC7'] },
+  { id:'AP8', name:'PRODUCE 101：全民制作人', genre:'talent_show',
+    brokenRule:'专家决定出道 —— 观众投票（F4+V2）被认为"不专业"',
+    conditions:['付出绑定正反馈螺旋（CC1）→每次投票加深情感投资','周期性悬念（CC5）→每周淘汰日制造仪式感','成长全周期可见（CC3）→观众不是"选"偶像，是"养成"偶像'],
+    attribution:'投票不是"做选择"——是"参与养成"。沉没成本让观众从"旁观者"变成"自己人"',
+    reusable:'观众有实质性的、反复的决策权（不限于投票），且决策后果可见',
+    notReusable:'中国饭圈打投禁令下，F4+V2定生死模式已不可行。需改为投票定福利/任务而非定生死',
+    relatedChains:['CC1','CC5','CC3','CC10'] },
+  { id:'AP9', name:'无限挑战：什么都能做的综艺', genre:'travel',
+    brokenRule:'综艺需要固定类型/格式 ——"每期换主题"被认为"没有品牌辨识度"',
+    conditions:['核心班底化学反应极强（≥5年磨合）','实验引擎（E5）——"如果让这群人去___会怎样"作为每期的发端','颠覆者角色（C8）扎堆 + 幽默引擎（E8）主导'],
+    attribution:'格式不重要，人重要。当核心班底的化学反应足够强，"看这群人做任何事"本身就是卖点',
+    reusable:'有经过多季磨合的固定班底（≥3季），化学反应已被验证',
+    notReusable:'新节目第一季、临时班底',
+    relatedChains:['CC13'] },
+  { id:'AP10', name:'Running Man：不淘汰的竞技', genre:'talent_show',
+    brokenRule:'竞技综艺需要淘汰制造紧张 —— 游戏输了只是"惩罚"被认为"没有真正的赌注"',
+    conditions:['游戏引擎（E9）+ 幽默引擎（E8）主导→观众享受"看聪明人玩规则"','颠覆者C8+运气F8→结果不可预测但没人受伤','移动容器S7+开放世界S3→每期新场景新规则'],
+    attribution:'惩罚（画脸/穿丑衣服）替代淘汰→淘汰制造"恐惧"，惩罚制造"笑料"。观众害怕淘汰但期待惩罚',
+    reusable:'惩罚有趣但不羞辱人，且参与者不抵触出丑',
+    notReusable:'惩罚过于严厉或羞辱性（中国观众对"整蛊"敏感度更高）',
+    relatedChains:['CC6','CC9','CC13'] }
+];
+
+
+// ═══════════════════════════════════
+// SIGNAL_FEED: 发端引擎信号数据 (v1.8)
+// ═══════════════════════════════════
+const SIGNAL_FEED = [
+  { id:'H1', channel:'热议', topic:'AI替代焦虑', source:'微博/知乎 · 2025-09~2026-06',
+    angle:'职场人担心被AI取代→选秀/竞技类可做"人机对决"或"AI辅助创作"', genres:['talent_show','survival'] },
+  { id:'H2', channel:'热议', topic:'县城青年回流', source:'抖音/快手 · 2026-Q1',
+    angle:'年轻人离开一线回县城→观察类/群居实验可做"回乡青年共创社区"', genres:['observation','communal'] },
+  { id:'H3', channel:'热议', topic:'搭子文化进化', source:'小红书/微博 · 2025-2026',
+    angle:'从饭搭子到旅行搭子到养老搭子→恋综/群居可做"陌生人搭子实验"', genres:['dating','communal'] },
+  { id:'H4', channel:'热议', topic:'35岁职场危机', source:'知乎/脉脉 · 2025-2026',
+    angle:'中年转型焦虑→生存/挑战类可做"35岁重启人生"', genres:['survival','talent_show'] },
+  { id:'H5', channel:'热议', topic:'数字游民/远程办公', source:'即刻/小红书 · 2025-2026',
+    angle:'不受地理限制的工作方式→旅行/公路类可做"移动工作站"', genres:['travel'] },
+  { id:'S1', channel:'高赞', topic:'素人改造/逆袭', source:'抖音 · 2026',
+    angle:'普通人经过专业打造后的反差→选秀可做"素人造星"', genres:['talent_show'] },
+  { id:'S2', channel:'高赞', topic:'慢生活vlog', source:'B站/小红书 · 2026',
+    angle:'治愈系日常内容持续高互动→观察类可做"城市慢生活"', genres:['observation'] },
+  { id:'S3', channel:'高赞', topic:'陌生人社交实验', source:'B站/抖音 · 2026',
+    angle:'随机匹配陌生人共处→群居实验/恋综可做"算法匹配共居"', genres:['communal','dating'] },
+  { id:'D1', channel:'剧集', topic:'女性群像/姐妹情谊', source:'《欢乐颂》《三十而已》系列 · 进行时',
+    angle:'女性互助叙事→群居实验/观察类可做"女性共创空间"', genres:['communal','observation'] },
+  { id:'D2', channel:'剧集', topic:'代际冲突', source:'《小欢喜》《都挺好》系列 · 完成时再发酵',
+    angle:'父母vs子女价值观碰撞→观察类可做"代际共居实验"', genres:['observation','communal'] },
+  { id:'D3', channel:'剧集', topic:'重生/逆袭叙事', source:'短剧爆款题材 · 进行时',
+    angle:'"重来一次"的爽感→竞技/生存类可做"失败者重启计划"', genres:['talent_show','survival'] },
+  { id:'J1', channel:'日韩', topic:'소확행（小确幸）→ 微幸福经济', source:'韩剧/韩综趋势 · 2024-2025',
+    angle:'不追求大成功，追求日常小幸福→观察类/治愈向可做"微小成就挑战"', genres:['observation'] },
+  { id:'J2', channel:'日韩', topic:'一人家庭/独居时代', source:'韩综《我独自生活》+日剧 · 2023-2025',
+    angle:'独居不孤单→观察类/群居可做"独居者联盟"', genres:['observation','communal'] },
+  { id:'J3', channel:'日韩', topic:'비혼（非婚）主义', source:'韩综讨论 · 2024-2025',
+    angle:'不结婚但渴望亲密关系→恋综可做"非婚伴侣实验"', genres:['dating'] },
+  { id:'J4', channel:'日韩', topic:'老後破産/老年贫困', source:'日剧+NHK纪录片 · 2023-2024',
+    angle:'老年经济压力→生存/群居可做"老年共创社区"', genres:['survival','communal'] },
+];
+
+// KOREAN_SHOW_DB: 韩综样本库 (v1.12)
+const KOREAN_SHOW_DB = [
+  { id:'K1', show:'PRODUCE 101', genre:'talent_show', year:2016, network:'Mnet',
+    mechanism:'101名练习生→全民投票→11人出道', innovation:'「国民制作人」概念，观众即决策者',
+    douban:8.1, takeaway:'选秀的核心不是舞台，是观众对练习生的情感投资过程' },
+  { id:'K2', show:'Show Me The Money', genre:'talent_show', year:2012, network:'Mnet',
+    mechanism:'地下rapper海选→团队battle→音源竞演', innovation:'把underground文化拉到主流，真实感>精致感',
+    douban:8.5, takeaway:'竞技类节目的真实性来自选手的「未被驯化」，而非赛制设计' },
+  { id:'K3', show:'Heart Signal', genre:'dating', year:2017, network:'Channel A',
+    mechanism:'素人合住+信号发送+演播室推理', innovation:'恋爱+推理双线，「观众比当事人更急」',
+    douban:8.3, takeaway:'恋综的驱动力不在配对结果，在「猜谁喜欢谁」的认知缺口' },
+  { id:'K4', show:'换乘恋爱', genre:'dating', year:2021, network:'TVING',
+    mechanism:'分手情侣合住→前任在场的情况下新恋爱', innovation:'把「前任」变成叙事炸弹，每集一个修罗场',
+    douban:8.7, takeaway:'情感类节目的最高杠杆是「观众知道但当事人不知道」的信息不对等' },
+  { id:'K5', show:'我独自生活', genre:'observation', year:2013, network:'MBC',
+    mechanism:'独居艺人日常vlog→演播室reaction', innovation:'不制造冲突，靠「窥视真实生活」取胜',
+    douban:8.9, takeaway:'观察类的核心是「足够真实的样本+足够有趣的观察者」' },
+  { id:'K6', show:'The Genius', genre:'survival', year:2013, network:'tvN',
+    mechanism:'13人脑力游戏→每集淘汰1人', innovation:'综艺版的「鱿鱼游戏」先驱，规则复杂度=看点',
+    douban:9.3, takeaway:'生存类节目的规则设计比选手更重要——规则即内容' },
+  { id:'K7', show:'体能之巅', genre:'survival', year:2023, network:'Netflix',
+    mechanism:'100名体格顶尖者→体能淘汰赛→终极对决', innovation:'纯身体竞技，无剧本无 drama',
+    douban:7.8, takeaway:'身体本身的叙事力不弱于剧本——100个身体=100种故事' },
+  { id:'K8', show:'Roommate', genre:'communal', year:2014, network:'SBS',
+    mechanism:'11位艺人同住→日常生活+任务', innovation:'跨代际群居，代际冲突即内容',
+    douban:7.9, takeaway:'群居实验的张力=边界磨合。初期的尴尬和冲突比后期的和谐更好看' },
+  { id:'K9', show:'新西游记', genre:'travel', year:2015, network:'tvN',
+    mechanism:'成员cos经典角色→游戏通关→龙珠收集', innovation:'IP化角色扮演+游戏化旅行的终极形态',
+    douban:9.6, takeaway:'罗PD的核心方法论：把旅行变成游戏，把艺人变成角色' },
+  { id:'K10', show:'花样青春', genre:'travel', year:2014, network:'tvN',
+    mechanism:'「绑架」艺人→扔到国外→穷游', innovation:'剥夺控制权=制造真实反应，「被安排的意外」',
+    douban:9.4, takeaway:'旅行类节目的意外感比风景重要。让参与者失控，观众才能看到真人' },
+  { id:'K11', show:'孝利家民宿', genre:'observation', year:2017, network:'JTBC',
+    mechanism:'李孝利夫妇开放济州岛家→接待普通游客', innovation:'明星降维到服务业，去光环化=真实感',
+    douban:9.3, takeaway:'观察类的终极武器是「日常感」。大明星做普通事比做大事更吸引人' },
+  { id:'K12', show:'Begin Again', genre:'travel', year:2017, network:'JTBC',
+    mechanism:'音乐人去陌生城市→街头即兴演出', innovation:'无赛制无淘汰，纯靠音乐+地点+即兴化学反应',
+    douban:9.5, takeaway:'当内容本身足够强（音乐+人文+旅行），赛制反而是减分项' }
+];
+
+// SIGNAL_ELEMENT_MAP: 每个信号→推荐发端引擎 (v1.13)
+// 点击信号卡片只填充叙事引擎（发端层），不动其他层
+const SIGNAL_ELEMENT_MAP = {
+  H1: { dominant:['E2'], auxiliary:['E5'] },
+  H2: { dominant:['E7'], auxiliary:['E5'] },
+  H3: { dominant:['E4'], auxiliary:['E5'] },
+  H4: { dominant:['E2'], auxiliary:['E1'] },
+  H5: { dominant:['E5'], auxiliary:['E7'] },
+  S1: { dominant:['E1'], auxiliary:['E6'] },
+  S2: { dominant:['E7'], auxiliary:[] },
+  S3: { dominant:['E4'], auxiliary:['E5'] },
+  D1: { dominant:['E4'], auxiliary:['E7'] },
+  D2: { dominant:['E4'], auxiliary:['E5'] },
+  D3: { dominant:['E1'], auxiliary:['E2'] },
+  J1: { dominant:['E7'], auxiliary:[] },
+  J2: { dominant:['E7'], auxiliary:['E5'] },
+  J3: { dominant:['E4'], auxiliary:['E5'] },
+  J4: { dominant:['E2'], auxiliary:['E7'] }
+};
+
+// KOREAN_ELEMENT_MAP: 每个韩综→推荐发端引擎 (v1.13)
+// 点击韩综卡片只填充叙事引擎（发端层），不动其他层
+const KOREAN_ELEMENT_MAP = {
+  K1: { dominant:['E1'], auxiliary:['E3'] },
+  K2: { dominant:['E2'], auxiliary:['E1'] },
+  K3: { dominant:['E4'], auxiliary:['E3'] },
+  K4: { dominant:['E4'], auxiliary:['E3'] },
+  K5: { dominant:['E7'], auxiliary:['E6'] },
+  K6: { dominant:['E9'], auxiliary:['E3'] },
+  K7: { dominant:['E2'], auxiliary:['E1'] },
+  K8: { dominant:['E4'], auxiliary:['E7'] },
+  K9: { dominant:['E8'], auxiliary:['E9'] },
+  K10: { dominant:['E8'], auxiliary:['E5'] },
+  K11: { dominant:['E7'], auxiliary:['E6'] },
+  K12: { dominant:['E7'], auxiliary:['E6'] }
+};
+
+const GENRE_SIGNAL_WEIGHTS = {
+  talent_show: { '热议':2, '高赞':1, '剧集':1, '日韩':0.5 },
+  dating:      { '热议':2, '高赞':1.5, '剧集':0.5, '日韩':1 },
+  observation: { '热议':1, '高赞':1, '剧集':2, '日韩':1.5 },
+  survival:    { '热议':1, '高赞':0.5, '剧集':1, '日韩':1 },
+  communal:    { '热议':1.5, '高赞':1, '剧集':1.5, '日韩':1.5 },
+  travel:      { '热议':1, '高赞':1.5, '剧集':0.5, '日韩':0.5 },
+};
+
+const CHANNEL_EMOJI = { '热议':'🔥', '高赞':'👍', '剧集':'📺', '日韩':'🌏' };
+
+function getRelevantSignals(genre, limit) {
+  limit = limit || 6;
+  var signals = SIGNAL_FEED.map(function(s) {
+    var genreMatch = !genre || s.genres.indexOf(genre) >= 0;
+    var baseWeight = genre ? (GENRE_SIGNAL_WEIGHTS[genre] && GENRE_SIGNAL_WEIGHTS[genre][s.channel] || 1) : 1;
+    return { id:s.id, channel:s.channel, topic:s.topic, source:s.source, angle:s.angle,
+             score: genreMatch ? baseWeight : baseWeight * 0.3 };
+  });
+  signals.sort(function(a,b) { return b.score - a.score; });
+  return signals.slice(0, limit);
+}
+
+function renderSignalCards() {
+  var grid = document.getElementById('signalGrid');
+  if (!grid) return;
+  var genre = state.activeGenre;
+  var signals = getRelevantSignals(genre);
+
+  if (signals.length === 0) {
+    grid.innerHTML = '<div style="color:var(--text-muted);font-size:0.875rem;padding:12px;text-align:center">当前类型片暂无匹配信号</div>';
+    return;
+  }
+
+  var tag = document.getElementById('signalGenreTag');
+  if (tag) {
+    var genreNames = { talent_show:'选秀/竞技', dating:'恋综/情感', observation:'观察类', survival:'生存/挑战', communal:'群居实验', travel:'旅行/公路' };
+    tag.textContent = genre ? genreNames[genre] || genre : '通用模式';
+  }
+
+  grid.innerHTML = signals.map(function(s) {
+    return '<div class="signal-card" onclick="applySignalMapping(\'' + s.id + '\')" style="cursor:pointer">' +
+      '<span class="signal-card__channel">' + (CHANNEL_EMOJI[s.channel] || '') + ' ' + s.channel + '</span>' +
+      '<div class="signal-card__topic">' + s.topic + '</div>' +
+      '<div class="signal-card__source">' + s.source + '</div>' +
+      '<div class="signal-card__angle">💡 ' + s.angle + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function toggleSignalPanel() {
+  var panel = document.getElementById('signalPanel');
+  if (!panel) return;
+  var isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) renderSignalCards();
+}
+
+function refreshSignalPanel() {
+  var panel = document.getElementById('signalPanel');
+  if (panel && panel.style.display !== 'none') renderSignalCards();
+}
+
+// KOREAN SHOW PANEL (v1.12)
+function getRelevantKoreanShows(genre) {
+  if (!genre) return KOREAN_SHOW_DB;
+  return KOREAN_SHOW_DB.filter(function(s) { return s.genre === genre; });
+}
+
+function renderKoreanShowCards() {
+  var grid = document.getElementById('koreanGrid');
+  if (!grid) return;
+  var genre = state.activeGenre;
+  var shows = getRelevantKoreanShows(genre);
+
+  if (shows.length === 0) {
+    grid.innerHTML = '<div style="color:var(--text-muted);font-size:0.875rem;padding:12px;text-align:center">当前类型片暂无韩综样本，显示全部参考 ↓</div>' +
+      KOREAN_SHOW_DB.map(renderKoreanCard).join('');
+    return;
+  }
+
+  var tag = document.getElementById('koreanGenreTag');
+  if (tag) {
+    var genreNames = { talent_show:'选秀/竞技', dating:'恋综/情感', observation:'观察类', survival:'生存/挑战', communal:'群居实验', travel:'旅行/公路' };
+    tag.textContent = genre ? genreNames[genre] || genre : '全部类型';
+  }
+
+  grid.innerHTML = shows.map(renderKoreanCard).join('');
+}
+
+function renderKoreanCard(s) {
+  return '<div class="signal-card" onclick="applyKoreanMapping(\'' + s.id + '\')" style="cursor:pointer">' +
+    '<div class="signal-card__channel">🇰🇷 ' + s.network + ' · ' + s.year + ' · ⭐' + s.douban + '</div>' +
+    '<div class="signal-card__topic">' + s.show + '</div>' +
+    '<div class="signal-card__source">' + s.mechanism + '</div>' +
+    '<div class="signal-card__angle">💡 ' + s.takeaway + '</div>' +
+    '<div style="margin-top:8px;font-size:0.75rem;color:var(--accent);border-top:1px solid var(--border);padding-top:6px">🆕 ' + s.innovation + '</div>' +
+  '</div>';
+}
+
+function toggleKoreanShowPanel() {
+  var panel = document.getElementById('koreanShowPanel');
+  if (!panel) return;
+  var isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) renderKoreanShowCards();
+}
+
+function refreshKoreanShowPanel() {
+  var panel = document.getElementById('koreanShowPanel');
+  if (panel && panel.style.display !== 'none') renderKoreanShowCards();
+}
+
+// SIGNAL / KOREAN SHOW MAPPING (v1.13)
+// 点击信号/韩综卡片 → 只填充叙事引擎（发端层），不碰其他层
+function applyNarrativeMapping(m, title) {
+  if (!m) return;
+  // 只清叙事引擎
+  state.narrative.dominant.clear();
+  state.narrative.auxiliary.clear();
+  // 填入新值
+  m.dominant.forEach(function(id) { state.narrative.dominant.add(id); });
+  m.auxiliary.forEach(function(id) { state.narrative.auxiliary.add(id); });
+  // 解锁 L1
+  if (!state.layerUnlocked[0]) state.layerUnlocked[0] = true;
+  refreshAllChips();
+  syncLayerState();
+  // 只在标题为空或默认值时填充，不覆盖用户已输入的标题
+  var titleInput = document.getElementById('outputTitle');
+  if (title && (!titleInput.value || titleInput.value === '未命名方案')) {
+    titleInput.value = title;
+  }
+  generate();
+  // 弹回发端层，不跳到底部输出面板
+  document.getElementById('grid').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function applySignalMapping(signalId) {
+  applyNarrativeMapping(SIGNAL_ELEMENT_MAP[signalId], '信号推荐方案');
+}
+
+function applyKoreanMapping(koreanId) {
+  var show = KOREAN_SHOW_DB.find(function(s) { return s.id === koreanId; });
+  applyNarrativeMapping(KOREAN_ELEMENT_MAP[koreanId], show ? '参考「' + show.show + '」' : '韩综参考方案');
+}
+
+// CAUSAL ANALYSIS: 因果推导链生成
+// ═══════════════════════════════════
+function getSelectedIds() {
+  const ids = new Set();
+  state.narrative.dominant.forEach(id => ids.add(id));
+  state.narrative.auxiliary.forEach(id => ids.add(id));
+  ['time','space','filter','characters','viewing','exit','authenticity'].forEach(k => state[k].forEach(id => ids.add(id)));
+  return ids;
+}
+
+// 将文本中的元素代号（F4/V2/E1等）替换为中文全称
+function replaceIdsWithNames(text) {
+  if (!text) return text;
+  let result = text;
+  // Sort by ID length descending so E10 replaces before E1
+  const sortedIds = Object.keys(elementMap).sort((a, b) => b.length - a.length);
+  sortedIds.forEach(id => {
+    const el = elementMap[id];
+    if (el) {
+      // Match whole word IDs only (bounded by non-word chars or string edges)
+      const regex = new RegExp('\\b' + id + '\\b', 'g');
+      result = result.replace(regex, el.label);
+    }
+  });
+  return result;
+}
+
+function generateCausalAnalysis() {
+  const ids = getSelectedIds();
+  if (ids.size === 0) return '<div style="color:var(--text-muted);padding:12px;font-size:0.9375rem">选择元素后，系统将自动推导因果链。</div>';
+
+  const matches = CAUSAL_CHAINS.filter(chain =>
+    chain.requires.every(id => ids.has(id))
+  );
+
+  if (matches.length === 0) {
+    return '<div style="color:var(--text-muted);padding:12px;font-size:0.9375rem;line-height:1.7">当前元素组合未命中预定义的因果链。<br>这可能意味着：① 这是一个尚未被分析的新组合（值得探索）；② 元素间的关联较弱（建议通过 AI 脑暴验证）。</div>';
+  }
+
+  const picked = matches.slice(0, 4); // max 4 chains to avoid overload
+  return picked.map((chain, i) => {
+    const stepsHtml = chain.steps.map((s, j) =>
+      '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">' +
+      '<span style="color:var(--accent);font-weight:700;flex-shrink:0;font-size:0.75rem;margin-top:2px">' + (j+1) + '→</span>' +
+      '<span style="color:var(--text);font-size:0.875rem;line-height:1.6">' + s + '</span></div>'
+    ).join('');
+
+    let boundaryHtml = '';
+    if (chain.boundary) {
+      boundaryHtml = '<div style="margin-top:10px;padding:8px 12px;background:#fdf2f0;border-radius:6px;border-left:3px solid #f87171">' +
+        '<span style="color:#f87171;font-weight:600;font-size:0.75rem">⚠️ 边界条件</span><br>' +
+        '<span style="color:var(--text);font-size:0.8125rem;line-height:1.6">' + replaceIdsWithNames(chain.boundary) + '</span></div>';
+    }
+
+    let chinaHtml = '';
+    if (chain.china_note) {
+      chinaHtml = '<div style="margin-top:6px;padding:8px 12px;background:#f0f4f8;border-radius:6px;border-left:3px solid var(--accent)">' +
+        '<span style="color:var(--accent);font-weight:600;font-size:0.75rem">🇨🇳 中国市场</span><br>' +
+        '<span style="color:var(--text);font-size:0.8125rem;line-height:1.6">' + replaceIdsWithNames(chain.china_note) + '</span></div>';
+    }
+
+    return '<details style="margin-bottom:10px;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden" ' + (i === 0 ? 'open' : '') + '>' +
+      '<summary style="cursor:pointer;padding:10px 16px;font-size:0.875rem;font-weight:700;color:var(--text);background:#fdf9f4;user-select:none;display:flex;align-items:center;gap:8px">' +
+      '<span style="color:var(--accent)">🧬</span>' + chain.name +
+      '</summary>' +
+      '<div style="padding:14px 16px">' + stepsHtml + boundaryHtml + chinaHtml + '</div></details>';
+  }).join('');
+}
+
+// ═══════════════════════════════════
+
+// ═══════════════════════════════════
+// ANTI-PATTERN CASES: 逆规律案例匹配 (v1.7)
+// ═══════════════════════════════════
+function getMatchedAntiCases() {
+  const ids = getSelectedIds();
+  if (ids.size === 0) return [];
+
+  // Get activated chain IDs
+  const activatedChains = CAUSAL_CHAINS
+    .filter(c => c.requires.every(id => ids.has(id)))
+    .map(c => c.id);
+
+  // Match anti-pattern cases by chain overlap
+  return ANTI_PATTERN_CASES
+    .map(c => {
+      const chainOverlap = c.relatedChains.filter(cid => activatedChains.includes(cid));
+      let score = chainOverlap.length;
+      // Bonus for genre match
+      if (state.activeGenre && c.genre === state.activeGenre) score += 2;
+      return { ...c, score, chainOverlap };
+    })
+    .filter(c => c.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+}
+
+function generateAntiCases() {
+  const matches = getMatchedAntiCases();
+  if (matches.length === 0) return '';
+
+  const genreNames = { talent_show:'选秀/竞技', dating:'恋综/情感', observation:'观察类', survival:'生存/挑战', communal:'群居实验', travel:'旅行/公路' };
+
+  return matches.map(c => {
+    const badge = genreNames[c.genre] || c.genre;
+    const conditionsHtml = c.conditions.map(cond => '<li>' + cond + '</li>').join('');
+
+    return '<div class="anti-case">' +
+      '<div class="anti-case__header">' +
+        '<span class="anti-case__badge">' + badge + '</span>' +
+        '<span class="anti-case__name">' + c.name + '</span>' +
+      '</div>' +
+      '<div class="anti-case__rule">💡 打破了：' + c.brokenRule + '</div>' +
+      '<div class="anti-case__conditions">✅ 当时具备：<ul style="margin:4px 0 0;padding-left:20px">' + conditionsHtml + '</ul></div>' +
+      '<div class="anti-case__attribution">🎯 为什么爆了：' + c.attribution + '</div>' +
+      '<div class="anti-case__reusable">✅ 可复用：' + c.reusable + '</div>' +
+      '<div class="anti-case__not-reusable">❌ 不可复用：' + c.notReusable + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// Get anti-case context for AI prompts
+function getAntiCaseContext() {
+  const matches = getMatchedAntiCases();
+  if (matches.length === 0) return '';
+  const lines = matches.slice(0, 3).map(c =>
+    '- ' + c.name + '：' + c.attribution.slice(0, 100)
+  );
+  return '\n\n当前方案可能踩中的黑马模式：\n' + lines.join('\n') + '\n在脑暴时可参考这些路线，但不要直接套用。';
+}
+
+// BOUNDARY CONDITIONS: 失效条件检测
+// ═══════════════════════════════════
+function generateBoundaryConditions() {
+  const ids = getSelectedIds();
+  if (ids.size === 0) return '';
+
+  const matches = BOUNDARY_CONDITIONS.filter(bc =>
+    bc.requires.every(id => ids.has(id))
+  );
+
+  if (matches.length === 0) {
+    return '<div style="color:var(--text-muted);padding:12px;font-size:0.9375rem">✅ 未检测到已知失效条件。当前组合在已知边界内运行。</div>';
+  }
+
+  return matches.slice(0, 5).map(bc =>
+    '<div style="padding:12px 14px;margin-bottom:8px;background:#fdf9f4;border-radius:var(--radius-sm);border-left:3px solid var(--dominant)">' +
+    '<div style="margin-bottom:6px">' +
+    '<span style="font-weight:700;color:var(--text);font-size:0.9375rem">' + bc.name + '</span>' +
+    '</div>' +
+    '<div style="font-size:0.8125rem;color:var(--text-muted);margin-bottom:6px;line-height:1.6">' +
+    '<strong>触发：</strong>' + replaceIdsWithNames(bc.condition) + '</div>' +
+    '<div style="font-size:0.8125rem;color:var(--text);margin-bottom:6px;line-height:1.6">' +
+    '<strong>症状：</strong>' + replaceIdsWithNames(bc.symptom) + '</div>' +
+    '<div style="font-size:0.8125rem;color:var(--selected);line-height:1.6">' +
+    '<strong>💡 修复：</strong>' + replaceIdsWithNames(bc.fix) + '</div>' +
+    '</div>'
+  ).join('');
+}
+
+// ═══════════════════════════════════
+// MARKET NOTES: 中国市场适配
+// ═══════════════════════════════════
+function generateMarketNotes() {
+  const ids = getSelectedIds();
+  if (ids.size === 0) return '';
+
+  const matches = MARKET_NOTES.filter(mn =>
+    mn.requires.length === 0 || mn.requires.every(id => ids.has(id))
+  );
+
+  if (matches.length === 0) return '';
+
+  const categories = {};
+  matches.forEach(m => {
+    if (!categories[m.category]) categories[m.category] = [];
+    categories[m.category].push(m.note);
+  });
+
+  const catLabels = { '政策': '🚨 政策红线', '价值观': '🧭 价值导向', '受众': '👥 受众洞察', '平台': '📱 平台匹配', '成本': '💰 成本结构', '趋势': '📈 趋势判断' };
+
+  return Object.keys(categories).map(cat =>
+    '<div style="margin-bottom:12px">' +
+    '<div style="font-size:0.8125rem;font-weight:700;color:var(--accent);margin-bottom:6px;letter-spacing:0.02em">' + (catLabels[cat] || cat) + '</div>' +
+    categories[cat].map(n =>
+      '<div style="padding:8px 12px;margin-bottom:4px;background:#faf7f3;border-radius:6px;font-size:0.8125rem;line-height:1.6;color:var(--text)">' + replaceIdsWithNames(n) + '</div>'
+    ).join('') +
+    '</div>'
+  ).join('');
+}
+
+// ═══════════════════════════════════
+// COPY & EXPORT
+// ═══════════════════════════════════
+function stripHtml(s) { const d = document.createElement('div'); d.innerHTML = s; return d.textContent || d.innerText || ''; }
+
+function getOutputText() {
+  const title = document.getElementById('outputTitle').value || '未命名方案';
+  let text = `# ${title}\n\n`;
+
+  // ── 方案简介（纯文本） ──
+  text += `## 📖 方案简介\n\n${stripHtml(generatePitch())}\n\n`;
+
+  // ── 观众旅程（折叠，仅简要） ──
+  text += `## 👀 观众旅程\n\n`;
+  text += stripHtml(generateViewerJourney()) + '\n\n';
+  text += `> 💡 此板块为辅助参考，核心分析见因果推导链与边界条件。\n\n`;
+
+  // ── 核心看点（纯文本） ──
+  text += `## 💡 核心看点\n\n`;
+  text += stripHtml(generateHighlights()) + '\n\n';
+
+  // ── 因果推导链 ──
+  text += `## 🧠 因果推导链\n\n`;
+  text += stripHtml(generateCausalAnalysis()) + '\n\n';
+
+  // ── 边界条件 ──
+  text += `## ⚠️ 边界条件 & 失效分析\n\n`;
+  text += stripHtml(generateBoundaryConditions()) + '\n\n';
+
+  // ── 中国市场适配 ──
+  text += `## 🌏 中国市场适配\n\n`;
+  text += stripHtml(generateMarketNotes()) + '\n\n';
+
+  // ── 组合公式 ──
+  text += `## 🧬 组合公式\n\`\`\`\n${generateFormula()}\n\`\`\`\n\n`;
+
+  return text;
+}
+
+function copyOutput() {
+  const text = getOutputText();
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('✅ 已复制到剪贴板');
+  }).catch(() => {
+    showToast('❌ 复制失败，请手动选择');
+  });
+}
+
+function exportMarkdown() {
+  const title = document.getElementById('outputTitle').value || '未命名方案';
+  const today = new Date().toISOString().slice(0, 10);
+  const text = getOutputText();
+
+  const frontmatter = [
+    '---',
+    `title: "${title}"`,
+    `author: cc`,
+    `created: ${today}`,
+    `tags: ["方案骨架", "综艺", "策划"]`,
+    `generated_by: "方案骨架生成器"`,
+    '---',
+    ''
+  ].join('\n');
+
+  const full = frontmatter + '\n' + text;
+
+  const blob = new Blob([full], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${today}-${title}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ Markdown 已下载');
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('toast--show');
+  clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(() => toast.classList.remove('toast--show'), 1800);
+}
+
+// ═══════════════════════════════════
+// SETTINGS MODAL
+// ═══════════════════════════════════
+function openSettings() {
+  const modal = document.getElementById('settingsModal');
+  const input = document.getElementById('apiKeyInput');
+  const status = document.getElementById('apiKeyStatus');
+  input.value = apiConfig.apiKey;
+  document.getElementById('modelSelect').value = apiConfig.model;
+  input.type = 'password';
+
+  if (IS_SERVER_MODE) {
+    input.disabled = true;
+    input.placeholder = '✅ 服务器已提供 Key';
+    document.getElementById('modelSelect').disabled = true;
+    status.textContent = '✅ 服务器模式 — API Key 由服务器统一管理';
+    status.className = 'modal__status modal__status--ok';
+    // 隐藏"测试连接"按钮（服务器模式下无需测试）
+    const testBtn = document.getElementById('btnTestConn');
+    if (testBtn) testBtn.style.display = 'none';
+  } else if (apiConfig.apiKey) {
+    input.disabled = false;
+    document.getElementById('modelSelect').disabled = false;
+    status.textContent = '✅ Key 已就绪';
+    status.className = 'modal__status modal__status--ok';
+  } else {
+    input.disabled = false;
+    document.getElementById('modelSelect').disabled = false;
+    status.textContent = '请填入 DeepSeek API Key';
+    status.className = 'modal__status modal__status--warn';
+  }
+  modal.classList.add('modal-overlay--visible');
+  setTimeout(() => input.focus(), 100);
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('modal-overlay--visible');
+}
+
+function toggleKeyVisibility() {
+  const input = document.getElementById('apiKeyInput');
+  const isPassword = input.type === 'password';
+  input.type = isPassword ? 'text' : 'password';
+  event.target.textContent = isPassword ? '🙈' : '👁️';
+}
+
+function saveApiKey() {
+  if (IS_SERVER_MODE) { showToast('✅ 服务器模式 — 无需手动设置 Key'); return; }
+  const input = document.getElementById('apiKeyInput');
+  const key = input.value.trim();
+  if (!key) {
+    showToast('⚠️ 请输入 API Key');
+    return;
+  }
+  if (!key.startsWith('sk-')) {
+    showToast('⚠️ Key 格式看起来不对（应以 sk- 开头）');
+    return;
+  }
+  apiConfig.apiKey = key;
+  const model = document.getElementById('modelSelect').value;
+  apiConfig.model = model;
+  localStorage.setItem('ds_model', model);
+  localStorage.setItem('ds_api_key', key);
+  document.getElementById('apiKeyStatus').textContent = '✅ Key 已就绪';
+  document.getElementById('apiKeyStatus').className = 'modal__status modal__status--ok';
+  showToast('✅ API Key 已保存');
+  closeSettings();
+}
+
+function clearApiKey() {
+  apiConfig.apiKey = '';
+  apiConfig.model = 'deepseek-v4-pro';
+  localStorage.removeItem('ds_model');
+  document.getElementById('modelSelect').value = 'deepseek-v4-pro';
+  localStorage.removeItem('ds_api_key');
+  document.getElementById('apiKeyInput').value = '';
+  document.getElementById('apiKeyStatus').textContent = '请填入 DeepSeek API Key';
+  document.getElementById('apiKeyStatus').className = 'modal__status modal__status--warn';
+  document.getElementById('aiResults').innerHTML = '';
+  showToast('🗑️ API Key 已清除');
+}
+
+// ═══════════════════════════════════
+// DEEPSEEK API
+// ═══════════════════════════════════
+async function callDeepSeek(a, b, c) {
+  if (!IS_SERVER_MODE && !apiConfig.apiKey) { openSettings(); throw new Error('API Key 未设置'); }
+
+  let messages, temperature;
+  if (Array.isArray(a)) {
+    messages = a;
+    temperature = (b !== undefined) ? b : 0.8;
+  } else {
+    messages = [
+      { role: 'system', content: a },
+      { role: 'user', content: b }
+    ];
+    temperature = (c !== undefined) ? c : 0.8;
+  }
+
+  // 30s timeout — mobile networks can hang silently without AbortController
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+  let response;
+  try {
+    // Server mode: no Authorization header (nginx injects it); client mode: Bearer token
+    const headers = { 'Content-Type': 'application/json' };
+    if (!IS_SERVER_MODE) {
+      headers['Authorization'] = 'Bearer ' + apiConfig.apiKey;
+    }
+    response = await fetch(apiConfig.endpoint, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ model: apiConfig.model, messages, temperature, max_tokens: 4096 }),
+      signal: controller.signal
+    });
+  } catch (e) {
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') throw new Error('Timeout');
+    if (e.message.includes('Failed to fetch') || e.name === 'TypeError') throw new Error('CORS');
+    throw new Error('Network: ' + e.message);
+  }
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    if (response.status === 401) throw new Error('KeyInvalid');
+    if (response.status === 429) throw new Error('RateLimit');
+    const text = await response.text().catch(() => '');
+    throw new Error('API: ' + response.status + ' ' + text.slice(0, 200));
+  }
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+function formatError(type) {
+  switch (type) {
+    case 'CORS':
+      return '⚠️ 浏览器安全策略阻止了直接调用 DeepSeek API。<br>手机端常见原因：iOS Safari 对跨域请求限制更严格。<br>解决方法：① 使用桌面端 Chrome + CORS 插件 ② 或通过本地代理转发请求。';
+    case 'Timeout':
+      return '⏰ API 请求超时（30 秒无响应）。<br>可能原因：① 手机网络不稳定 ② DeepSeek 服务端排队。<br>建议：切换 Wi-Fi 或稍后重试。';
+    case 'KeyInvalid':
+      return '🔑 API Key 无效（401）。请检查 Key 是否正确，或前往 <a href="https://platform.deepseek.com/api_keys" target="_blank">DeepSeek 开放平台</a> 重新获取。';
+    case 'RateLimit':
+      return '⏳ API 请求过于频繁（429），请稍后再试。';
+    default:
+      return '❌ API 调用失败：<code>' + type.replace(/</g, '&lt;') + '</code>';
+  }
+}
+
+// ═══════════════════════════════════
+// BUILD USER CONTENT
+// ═══════════════════════════════════
+function buildElementList() {
+  const lines = [];
+  const title = document.getElementById('outputTitle').value || '未命名方案';
+  lines.push('方案名称：' + title);
+  lines.push('');
+  const dom = [...state.narrative.dominant].map(id => { const e = elementMap[id]; return e.label + '（' + e.desc + '）'; });
+  const aux = [...state.narrative.auxiliary].map(id => { const e = elementMap[id]; return e.label + '（' + e.desc + '）'; });
+  lines.push('🎬 叙事引擎');
+  if (dom.length) lines.push('  主导：' + dom.join('、'));
+  if (aux.length) lines.push('  辅助：' + aux.join('、'));
+  const cats = [
+    { id: 'time', emoji: '⏳', name: '时间结构' },
+    { id: 'space', emoji: '📍', name: '空间规则' },
+    { id: 'filter', emoji: '🔍', name: '筛选机制' },
+    { id: 'characters', emoji: '👥', name: '人物网络' },
+    { id: 'viewing', emoji: '👁️', name: '观看契约' },
+    { id: 'exit', emoji: '🚪', name: '出口设计' },
+    { id: 'authenticity', emoji: '⚓', name: '真实性锚点' }
+  ];
+  cats.forEach(c => {
+    const vals = [...state[c.id]].map(id => { const e = elementMap[id]; return e.label + '（' + e.desc + '）'; });
+    lines.push(c.emoji + ' ' + c.name + '：' + (vals.length ? vals.join(' + ') : '未选择'));
+  });
+  return lines.join('\n');
+}
+
+function buildPitchText() {
+  return stripHtml(generatePitch());
+}
+
+// ═══════════════════════════════════
+// AI FUNCTIONS
+// ═══════════════════════════════════
+function setAIButtonLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  if (loading) {
+    btn.disabled = true;
+    btn.dataset.origText = btn.textContent;
+    btn.innerHTML = '<span class="spinner"></span> 正在思考…';
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = btn.dataset.origText || btn.textContent;
+  }
+}
+
+async function aiPolish() {
+  if (!hasAnySelection()) { showToast('⚠️ 请先选择元素并生成方案'); return; }
+  if (!IS_SERVER_MODE && !apiConfig.apiKey) { openSettings(); return; }
+
+  setAIButtonLoading('btnPolish', true);
+  try {
+    const systemPrompt = '你是一个综艺策划老手，帮人把方案骨架写成能拿出去讲的叙事文案。你的工作是让一段干巴巴的方案描述变得有画面、有节奏、有人味。\n\n要求：\n- 篇幅不固定，以读起来舒服为准，一般 2-4 段\n- 根据方案的气质调整语调。治愈向用克制的、留白的语言；竞技向用紧凑的、有压迫感的节奏；搞笑向可以放松、可以冒犯\n- 多用具体的场景和动作，少用抽象概念。\"凌晨三点的练习室灯还亮着\"比\"选手非常努力\"有力一百倍\n- 允许你自由补充合理的细节——一个画面、一句对话、一个瞬间——只要不改变方案的核心骨架\n- 杜绝公文腔：不要出现\"本方案\"\"该节目\"\"致力于\"\"打造\"这类词。像在跟人聊天一样写\n\n下面给了两份材料：一份是元素清单（告诉你方案选了哪些零件），一份是系统自动生成的简介（告诉你当前组出了什么东西）。以元素清单为准去理解方案，用简介作为改写起点。';
+    const userContent = '元素清单：\n' + buildElementList() + '\n\n当前简介：\n' + buildPitchText() + '\n\n请重写为叙事文案。';
+    const result = await callDeepSeek(systemPrompt, userContent, 0.8);
+    window._aiContexts = window._aiContexts || {};
+    window._aiContexts['polish'] = {
+      systemPrompt: systemPrompt,
+      placeholder: '继续调整文案，比如：换一种风格、加细节、缩短…',
+      thread: [
+        { role: 'user', content: userContent },
+        { role: 'assistant', content: result }
+      ]
+    };
+    renderAIResult('polish', '🤖 AI 润色', result);
+  } catch (e) {
+    renderAIError('polish', e.message);
+  }
+  setAIButtonLoading('btnPolish', false);
+}
+
+async function aiBrainstorm() {
+  if (!hasAnySelection()) { showToast('⚠️ 请先选择元素并生成方案'); return; }
+  if (!IS_SERVER_MODE && !apiConfig.apiKey) { openSettings(); return; }
+
+  setAIButtonLoading('btnBrainstorm', true);
+  try {
+    const antiCtx = getAntiCaseContext();
+  const systemPrompt = '你在一个综艺策划的创意会上，桌上摊着一组方案元素。你的角色是那个敢想敢说、不怕推翻重来的创意顾问。看了这组元素之后，你的任务是：\n\n1. 先一句话抓住这个方案的灵魂——不是复述元素，是说出它让人兴奋的那个东西。\n\n2. 然后提 3-4 个变体方向。别只绕着引擎和空间转，可以动的地方很多：时间结构、出口设计、人物关系、筛选机制、观看契约——随便拆一个，看看方案会怎么变。每个方向用 1-2 句说清楚，说说换了之后会带来什么新东西。\n\n3. 最后当一回魔鬼代言人，提 2-3 个风险。不要泛泛地说\"可能不好看\"——具体到商业风险（比如变现路径模糊）、执行风险（比如拍摄周期撑不住）、观众接受度风险（比如太实验了没人看）。每个风险给一句话的缓解思路。\n\n提替代方案时，用方案骨架里的具体元素名（比如\"把成长引擎换成实验引擎\"\"封闭空间改成半开放空间\"），这样方便直接在生成器里替换试。\n\n语气：像在开创意会。有火花，有碰撞，该夸就夸，该怼就怼。别写那种\"从多个维度来看……\"的废话开头。';
+    const elList = buildElementList();
+    const userContent = '以下是一个综艺方案的元素组合，请基于此进行创意脑暴：\n\n' + elList;
+    const result = await callDeepSeek(systemPrompt, userContent, 0.9);
+    // Store brainstorm context for follow-up
+    window._aiContexts = window._aiContexts || {};
+    window._aiContexts['brainstorm'] = {
+      systemPrompt: systemPrompt,
+      placeholder: '继续脑暴，比如：换个方向、针对某个风险深挖…',
+      thread: [
+        { role: 'user', content: userContent },
+        { role: 'assistant', content: result }
+      ]
+    };
+    renderAIResult('brainstorm', '🧠 AI 脑暴', result);
+  } catch (e) {
+    renderAIError('brainstorm', e.message);
+  }
+  setAIButtonLoading('btnBrainstorm', false);
+}
+
+async function aiDiagnose() {
+  if (!hasAnySelection()) { showToast('⚠️ 请先选择元素并生成方案'); return; }
+
+  // Step 1: Run client-side diagnosis immediately
+  const clientResults = runDiagnosis();
+  renderDiagnosisReport(clientResults, true);
+
+  // Step 2: AI deep analysis (if API key available)
+  if (!IS_SERVER_MODE && !apiConfig.apiKey) {
+    showToast('✅ 诊断完成（客户端规则引擎）');
+    return;
+  }
+
+  setAIButtonLoading('btnDiagnose', true);
+  try {
+    const antiCtx2 = getAntiCaseContext();
+  const systemPrompt = '你是一个专门给综艺方案挑毛病的审稿人。标准很直接：方案不是不能有短板，但不能有自己没意识到的短板。审阅覆盖这些维度：\n\n引擎冲突：两个引擎放在一起是互相加持还是互相拆台？举例：悬念引擎要的是"不知道"，治愈引擎要的是"放心"，同时主导会抵消。\n筛选单点：如果只有一种筛选机制（比如纯靠评委），万一这个机制失灵了（评委带偏见、观众不买账），有没有备手？\n真实性质感：2026 年的观众对"演的"极度敏感。真实性锚点选得够不够？选少了会被一眼看穿。\n出口匹配：出口反向决定了参与者的行为动机。成团出道的人会拼命表现，项目制的人只关心做完任务。出口和引擎对不对得上？\n人物密度：选的人物关系够不够撑起叙事？只有竞争者一种关系等于只有一条故事线，观众很快就腻。\n时空自洽：时间结构和空间规则有没有矛盾？比如"实时记录"放在"跳跃型时间"里就是矛盾的。\n观看闭环：观众怎么参与？如果只选了纯围观，商业回报从哪来？\n\n输出格式分三块，用 Markdown 标题区分：\n## ✅ 做得对的\n这个方案哪里选得好，不需要改。\n## ⚠️ 注意的\n不是错，但埋着雷，条件不对会炸。\n## ❌ 建议改的\n明确有问题，给具体的替换方案（用元素名，比如"把专家评审换成成员互评 + 客观数据"）。\n\n温度：严格但公正。如果组合本身就好，别硬挑。三段式里面可以某一块是空的。' + antiCtx2 + 
+      '\n\n' +
+      '以下已通过客户端规则引擎诊断出的问题，供你参考（不要重复，补充规则引擎未覆盖的深层分析）：\n' +
+      '🔴 致命冲突：' + clientResults.fatal.map(r=>r.id+' '+r.name).join('；') + '\n' +
+      '🟡 风险点：' + clientResults.warning.map(r=>r.id+' '+r.name).join('；') + '\n' +
+      '🟢 协同效应：' + clientResults.synergy.map(r=>r.id+' '+r.name).join('；') + '\n' +
+      '\n请基于以上客户端诊断结果，补充任何规则引擎未覆盖的深层分析（商业判断、行业趋势、具体案例等）。不要再重复客户端已经诊断出的问题。\n';
+    const userContent = '请审阅以下方案的元素组合：\n\n' + buildElementList();
+    const result = await callDeepSeek(systemPrompt, userContent, 0.5);
+    window._aiContexts = window._aiContexts || {};
+    window._aiContexts['diagnose'] = {
+      systemPrompt: systemPrompt,
+      placeholder: '追问细节，比如：这个问题的具体解法是什么…',
+      thread: [
+        { role: 'user', content: userContent },
+        { role: 'assistant', content: result }
+      ]
+    };
+    renderAIResult('diagnose', '🔍 AI 深度诊断', result);
+  } catch (e) {
+    renderAIError('diagnose', e.message);
+  }
+  setAIButtonLoading('btnDiagnose', false);
+}
+
+async function aiBusiness() {
+  if (!hasAnySelection()) { showToast('⚠️ 请先选择元素并生成方案'); return; }
+  if (!IS_SERVER_MODE && !apiConfig.apiKey) { openSettings(); return; }
+
+  setAIButtonLoading('btnBusiness', true);
+  try {
+    const systemPrompt = '你是一个帮综艺项目找钱的顾问。你见过太多方案死在"创意满分、商业零分"上。拿到一组方案元素，你的任务是判断这个东西能不能在市场上活下来。\n\n逐个过这 8 个维度，每个给一句判断。和当前方案无关的维度可以直接跳过不说：\n\n1. 收入天花板 —— 赞助、平台采购、会员、IP授权、线下活动、出海，哪些路能走、哪些是死路？\n2. 成本结构 —— 制作的烧钱点在哪。实时记录和开放世界是最贵的两个元素，碰上预算翻倍。棚内+周期性相对能控。\n3. 受众变现 —— 谁买单？Z世代女生是氪金主力，中年男性基本只贡献播放量。观看契约直接决定了变现上限。\n4. 人才依赖 —— 要请贵的吗？明星导师、流量嘉宾是成本黑洞。纯素人造星前期便宜但要赌成长性。\n5. 平台匹配 —— B站要社区感、抖音要碎片化、爱奇艺要会员拉新、卫视要收视率。元素组合决定了天生的平台归属。\n6. 政策敏感度 —— 粉丝投票、淘汰赛制、真实记录……哪些元素踩在中国综艺的政策敏感区？会不会播到一半被迫改规则？\n7. 时间窗口 —— 有没有天然播出时机？暑假（学生）、寒假（合家欢）、某个社会情绪的窗口期。好档期等于免费流量。\n8. 可复制性 —— S2能拍吗？格式能卖吗？还是一锤子买卖？\n\n输出用这个结构，注意：某个模块如果没什么值得说的，直接跳过，不要硬凑：\n\n## 💰 怎么赚钱\n收入模型 + 品牌匹配。具体到品类（说"运动饮料、3C数码"别说"快消品"），量级给数字区间并标"估算"。\n\n## ⚠️ 最大风险\n挑最要命的 1-2 个说。别罗列一堆不痛不痒的，集中火力讲最可能翻车的地方和缓解方向。\n\n## 🎯 值不值得投\n一句话。像跟投资人聊完走出来跟同事说的那种话。不是"建议审慎评估"，而是"这个方向对但团队和时机决定了是爆款还是炮灰"这种有判断、有信息量的话。\n\n禁止词：建议审慎评估、具有良好商业前景、有望实现、赋能、打造、闭环、抓手。';
+
+    // Append decision-maker context
+    const dept = state.bizDept;
+    const role = state.bizRole;
+    let personaCtx = '\n\n## 🎯 决策者画像\n';
+    personaCtx += '- 部门：' + (dept || '未指定，按通用平台方视角') + '\n';
+    personaCtx += '- 背景：' + (role || '未指定') + '\n';
+    if (!dept && !role) personaCtx += '（💡 可在 ⚙️ 设置中指定部门/角色视角，获得更精准的分析）\n';
+    if (dept || role) {
+      personaCtx += '\n基于以上画像，在分析末尾追加一段：\n';
+      personaCtx += '## 🎯 反向需求\n';
+      personaCtx += '该决策者最可能：\n';
+      personaCtx += '1. 提的 3-5 个具体问题\n';
+      personaCtx += '2. 反对的 2-3 个点及应对\n';
+      personaCtx += '3. 针对该决策者的关键说服策略\n';
+    }
+    const finalPrompt = systemPrompt + personaCtx;
+    const userContent = '请分析以下方案元素的商业前景：\n\n' + buildElementList();
+    const result = await callDeepSeek(finalPrompt, userContent, 0.6);
+    window._aiContexts = window._aiContexts || {};
+    window._aiContexts['business'] = {
+      systemPrompt: finalPrompt,
+      placeholder: '追问商业细节，比如：成本能再具体吗、平台差异…',
+      thread: [
+        { role: 'user', content: userContent },
+        { role: 'assistant', content: result }
+      ]
+    };
+    renderAIResult('business', '💼 AI 商业分析', result);
+  } catch (e) {
+    renderAIError('business', e.message);
+  }
+  setAIButtonLoading('btnBusiness', false);
+}
+
+// ═══════════════════════════════════
+// RENDER AI RESULTS
+// ═══════════════════════════════════
+function simpleMarkdownToHtml(text) {
+  let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  html = html.replace(/`(.+?)`/g, '<code>$1</code>');
+  html = html.replace(/^### (.+)$/gm, '<h4>$1</h4>');
+  html = html.replace(/^## (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*?<\/li>)+/gs, '<ul>$&</ul>');
+  const paras = html.split(/\n\n+/);
+  html = paras.map(p => {
+    p = p.trim();
+    if (!p) return '';
+    if (p.startsWith('<h') || p.startsWith('<ul') || p.startsWith('<blockquote')) return p;
+    return '<p>' + p.replace(/\n/g, '<br>') + '</p>';
+  }).join('\n');
+  return html;
+}
+
+function renderAIResult(type, label, content) {
+  const container = document.getElementById('aiResults');
+  const existing = document.getElementById('aiResult-' + type);
+  if (existing) existing.remove();
+
+  const html = simpleMarkdownToHtml(content);
+  const block = document.createElement('details');
+  block.className = 'ai-result';
+  block.id = 'aiResult-' + type;
+  block.open = true;
+  block.innerHTML = '<summary>' + label + ' <span class="ai-badge">NEW</span></summary><div class="ai-result__body">' + html + '</div>';
+  container.appendChild(block);
+  block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Add follow-up input for all AI types
+  if (window._aiContexts && window._aiContexts[type]) {
+    const followup = document.createElement('div');
+    followup.className = 'ai-followup';
+    followup.innerHTML = '<div class="ai-followup__thread" id="thread-' + type + '"></div>' +
+      '<div class="ai-followup__input-row">' +
+      '<input type="text" id="input-' + type + '" placeholder="' + (window._aiContexts[type].placeholder || '继续追问…') + '" onkeydown="if(event.keyCode===13)aiContinue(\'' + type + '\')">' +
+      '<button class="btn btn--ai btn--send" id="send-' + type + '" onclick="aiContinue(\'' + type + '\')">发送 💬</button>' +
+      '</div>';
+    block.querySelector('.ai-result__body').appendChild(followup);
+    setTimeout(() => { const inp = document.getElementById('input-' + type); if (inp) inp.focus(); }, 200);
+  }
+}
+
+
+function renderAIError(type, errorCode) {
+  const container = document.getElementById('aiResults');
+  const existing = document.getElementById('aiResult-' + type);
+  if (existing) existing.remove();
+
+  const block = document.createElement('details');
+  block.className = 'ai-result';
+  block.id = 'aiResult-' + type;
+  block.open = true;
+  block.innerHTML = '<summary>⚠️ 调用失败</summary><div class="ai-error">' + formatError(errorCode) + '</div>';
+  container.appendChild(block);
+  block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function aiBrainstormContinue() { aiContinue('brainstorm', 0.9); }
+
+async function aiContinue(type, temp) {
+  const input = document.getElementById('input-' + type);
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  if (!IS_SERVER_MODE && !apiConfig.apiKey) { openSettings(); return; }
+  const ctx = window._aiContexts && window._aiContexts[type];
+  if (!ctx) { showToast('⚠️ 请先生成 AI 分析'); return; }
+
+  const sendBtn = document.getElementById('send-' + type);
+  input.disabled = true;
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.innerHTML = '<span class="spinner"></span>'; }
+
+  const thread = document.getElementById('thread-' + type);
+  if (thread) {
+    const userMsg = document.createElement('div');
+    userMsg.className = 'ai-followup__msg ai-followup__msg--user';
+    userMsg.textContent = text;
+    thread.appendChild(userMsg);
+
+    const loading = document.createElement('div');
+    loading.className = 'ai-followup__msg ai-followup__msg--ai';
+    loading.innerHTML = '<span class="spinner"></span> 正在思考…';
+    loading.id = 'loading-' + type;
+    thread.appendChild(loading);
+    thread.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  try {
+    const messages = [{ role: 'system', content: ctx.systemPrompt }];
+    ctx.thread.push({ role: 'user', content: text });
+    messages.push(...ctx.thread);
+
+    const result = await callDeepSeek(messages, temp || 0.8);
+    ctx.thread.push({ role: 'assistant', content: result });
+
+    const loadingEl = document.getElementById('loading-' + type);
+    if (loadingEl) loadingEl.remove();
+
+    if (thread) {
+      const aiMsg = document.createElement('div');
+      aiMsg.className = 'ai-followup__msg ai-followup__msg--ai';
+      aiMsg.innerHTML = simpleMarkdownToHtml(result);
+      thread.appendChild(aiMsg);
+      thread.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  } catch (e) {
+    const loadingEl = document.getElementById('loading-' + type);
+    if (loadingEl) {
+      loadingEl.className = 'ai-followup__msg';
+      loadingEl.innerHTML = '<span style="color:#f87171">' + formatError(e.message) + '</span>';
+    }
+  }
+
+  input.value = '';
+  input.disabled = false;
+  if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = '发送 💬'; }
+  input.focus();
+}
+
+async function testConnection() {
+  const btn = document.getElementById('btnTestConn');
+  const key = document.getElementById('apiKeyInput').value.trim();
+  const model = document.getElementById('modelSelect').value;
+
+  if (IS_SERVER_MODE) {
+    showToast('✅ 服务器模式 — 无需手动测试连接');
+    return;
+  }
+  if (!key) { showToast('⚠️ 请先输入 API Key'); return; }
+  if (!key.startsWith('sk-')) { showToast('⚠️ Key 格式不对'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ 测试中…';
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const resp = await fetch(apiConfig.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 10 }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (resp.ok) {
+      showToast('✅ 连接成功 — ' + model);
+    } else if (resp.status === 401) {
+      showToast('🔑 Key 无效 (401)');
+    } else {
+      const t = await resp.text().catch(() => '');
+      showToast('❌ ' + resp.status + ': ' + t.slice(0, 60));
+    }
+  } catch (e) {
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') {
+      showToast('⏰ 连接超时（15秒），网络可能不稳定');
+    } else {
+      showToast('🌐 网络错误，可能需要 CORS 插件');
+    }
+  }
+  btn.disabled = false;
+  btn.textContent = '🔗 测试连接';
+}
+
+
+// ═══════════════════════════════════
+// DIAGNOSIS ENGINE — 47 条客户端矛盾诊断规则
+// ═══════════════════════════════════
+
+// 辅助函数：检查元素是否被选中
+function has(...ids) {
+  for (const id of ids) {
+    let found = false;
+    if (state.narrative.dominant.has(id) || state.narrative.auxiliary.has(id)) found = true;
+    ['time','space','filter','characters','viewing','exit','authenticity'].forEach(k => {
+      if (state[k].has(id)) found = true;
+    });
+    if (!found) return false;
+  }
+  return true;
+}
+function hasAny(...ids) { return ids.some(id => {
+  if (state.narrative.dominant.has(id) || state.narrative.auxiliary.has(id)) return true;
+  return ['time','space','filter','characters','viewing','exit','authenticity'].some(k => state[k].has(id));
+}); }
+function hasDominant(id) { return state.narrative.dominant.has(id); }
+function hasAuxiliary(id) { return state.narrative.auxiliary.has(id); }
+function totalSelected() {
+  let count = state.narrative.dominant.size + state.narrative.auxiliary.size;
+  ['time','space','filter','characters','viewing','exit','authenticity'].forEach(k => count += state[k].size);
+  return count;
+}
+
+const DIAGNOSIS_RULES = [
+  // ═══ R1: 筛选机制 × 观看契约 (8条) ═══
+  { id:'R1-01', severity:'fatal', name:'观众投票+黑箱→信任崩塌',
+    check:()=>has('F4')&&!hasAny('A2','A8')&&!has('F2'),
+    explanation:'观众投票需要验证机制支撑。缺乏透明度锚点（因果链/素材开源）或客观数据兜底→信任必然崩塌。',
+    alternative:'保留F4→加A2因果链或A8素材开源；保留黑箱→取消F4改用F1专家评审。' },
+  { id:'R1-02', severity:'fatal', name:'观众投票+强叙事控制→权力悖论',
+    check:()=>has('F4')&&(hasDominant('E1')||hasAuxiliary('E1')),
+    explanation:'投票结果不可控，但成长引擎需要特定人物走到特定节点。两者互斥：要么操控票数，要么放弃叙事控制。',
+    alternative:'保留F4→放弃E1成长主导；保留成长叙事→改投票为配合性参与（V5/V3）。' },
+  { id:'R1-03', severity:'fatal', name:'专家评审+社群共创→权威崩解',
+    check:()=>has('F1')&&has('V5'),
+    explanation:'专家权威来自"专业高于大众"，社群权力来自"多数即合理"。两套权威对撞→必有一方破产。',
+    alternative:'保留F1→社群降级为V3/V4；保留V5→取消F1，改用F2客观数据混合。' },
+  { id:'R1-04', severity:'warning', name:'成员互评+关系引擎→情感绑架',
+    check:()=>has('F3')&&(hasDominant('E4')||hasAuxiliary('E4')),
+    explanation:'关系引擎看的是真情实感，成员互评让关系变成淘汰工具。"他对我好是因为感情还是不想被淘汰？"',
+    alternative:'保留E4→改F3为F2/F1；保留F3→叙事引擎改为E2对抗或E5实验。' },
+  { id:'R1-05', severity:'warning', name:'系统自动+成长/对抗→好故事被系统杀死',
+    check:()=>has('F6')&&(hasAny('E1','E2')),
+    explanation:'系统不认"这个故事还没讲完"——可能淘汰正在关键转折的角色。观众会愤怒。',
+    alternative:'保留F6→叙事用E5/E6；保留E1/E2→加F5自选退出或F7分流做安全阀。' },
+  { id:'R1-06', severity:'synergy', name:'观众投票+透明度→信任闭环',
+    check:()=>has('F4')&&(hasAny('A2','A8')||has('F2')),
+    explanation:'投票权+可验证=正反馈循环。观众每一次验证都加深绑定。',
+    alternative:null },
+  { id:'R1-07', severity:'synergy', name:'成员互评+对抗引擎→关系即武器',
+    check:()=>has('F3')&&(hasDominant('E2')||hasAuxiliary('E2')),
+    explanation:'对抗框架下，互评不是情感绑架而是竞争策略。"你投他走"是战术，不是背叛。',
+    alternative:null },
+  { id:'R1-08', severity:'synergy', name:'客观数据+透明度→公平性天花板',
+    check:()=>has('F2')&&hasAny('A2','A8'),
+    explanation:'数据公开+因果可查="被淘汰是因为分数低"——观众无质疑空间，争议最小化。',
+    alternative:null },
+
+  // ═══ R2: 叙事引擎 × 时间结构 (6条) ═══
+  { id:'R2-01', severity:'fatal', name:'揭秘引擎+直播→揭秘节奏崩坏',
+    check:()=>hasAny('E6')&&has('T6'),
+    explanation:'揭秘需要精确控制信息释放节奏，直播无法编辑→秘密太早暴露或迟迟不露。',
+    alternative:'保留E6→改用T4跳跃型或T2周期性；保留T6→改用E2对抗或E4关系。' },
+  { id:'R2-02', severity:'warning', name:'成长引擎+跳跃型→成长不可见',
+    check:()=>(hasDominant('E1')||hasAuxiliary('E1'))&&has('T4'),
+    explanation:'跳跃型跳过中间过程→成长变成"结果告知"而非"过程见证"，情感投资打折。',
+    alternative:'保留E1→至少叠加T3实时记录；保留T4→引擎改用E5/E2。' },
+  { id:'R2-03', severity:'warning', name:'悬念引擎+倒计时→悬念过载',
+    check:()=>hasAny('E3')&&has('T1'),
+    explanation:'时间压力+悬念=双重焦虑。如果倒计时的终点不是悬念的解答，两者互相抵消。',
+    alternative:'二选一保留一个主要张力源；非要双持→确保倒计时终点=悬念解答。' },
+  { id:'R2-04', severity:'synergy', name:'成长引擎+实时记录→过程可见最大化',
+    check:()=>hasAny('E1')&&has('T3'),
+    explanation:'E1+T3=观众真的"见证"了成长，而非被"告知"——情感投资天花板。种地吧经典组合。',
+    alternative:null },
+  { id:'R2-05', severity:'synergy', name:'对抗引擎+直播→实时战斗',
+    check:()=>hasAny('E2')&&has('T6'),
+    explanation:'直播+对抗="谁赢"不可预知、不可编辑——真正紧张感。电竞本质即此公式。',
+    alternative:null },
+  { id:'R2-06', severity:'synergy', name:'悬念引擎+周期性→仪式化期待',
+    check:()=>hasAny('E3')&&has('T2'),
+    explanation:'固定节点制造可预期期待→"每周X等揭晓"的仪式感。创造营每周淘汰即此。',
+    alternative:null },
+
+  // ═══ R3: 叙事引擎 × 出口设计 (5条) ═══
+  { id:'R3-01', severity:'fatal', name:'成长引擎+开放结局→成长没终点',
+    check:()=>(hasDominant('E1')||hasAuxiliary('E1'))&&has('O5'),
+    explanation:'成长需要"变成什么"的答案。开放结局=没有终点=观众投资无收束=看了一部没第三幕的电影。',
+    alternative:'保留E1→出口必须闭环(O1/O3)；保留O5→引擎改用E4/E5。' },
+  { id:'R3-02', severity:'warning', name:'对抗引擎+开放/回归→战斗没胜负',
+    check:()=>(hasDominant('E2')||hasAuxiliary('E2'))&&hasAny('O5','O6'),
+    explanation:'对抗需要结果。"追了三个月，你告诉我没胜负？"→观众反弹。',
+    alternative:'保留E2→出口必须清晰胜负(O1/O2/O3)；保留O5→引擎改用E4/E6。' },
+  { id:'R3-03', severity:'synergy', name:'关系引擎+开放结局→关系延续',
+    check:()=>hasAny('E4')&&has('O5'),
+    explanation:'关系不因"终点"被固化，观众可以想象"他们之后还会怎样"——新西游记经典组合。',
+    alternative:null },
+  { id:'R3-04', severity:'synergy', name:'悬念引擎+闭环→谜题得解答',
+    check:()=>hasAny('E3')&&hasAny('O1','O3'),
+    explanation:'所有铺垫在终点得到解答=满足感。推理综艺+明确结案=完美闭环。',
+    alternative:null },
+  { id:'R3-05', severity:'synergy', name:'实验引擎+回归日常→实验结束生活继续',
+    check:()=>hasAny('E5')&&has('O6'),
+    explanation:'"在特殊条件下变样→回去"——完整实验框架。社会实验类标准收束。',
+    alternative:null },
+
+  // ═══ R4: 人物网络 × 空间规则 (5条) ═══
+  { id:'R4-01', severity:'fatal', name:'暧昧者+纯数字空间→暧昧没身体在场',
+    check:()=>has('C7')&&has('S5'),
+    explanation:'暧昧依赖微妙的非语言信号（眼神、距离、触碰犹豫）——数字空间全部丢失。观众直接判定"演的"。',
+    alternative:'保留C7→空间必须物理在场(S1/S2)；保留S5→移除C7，改用C1/C2。' },
+  { id:'R4-02', severity:'warning', name:'竞争者+封闭空间→密度过高',
+    check:()=>has('C1')&&has('S1'),
+    explanation:'长期封闭+零和竞争→心理崩溃风险。"竞技"升级为"人身攻击"的风险。',
+    alternative:'保留C1+S1→缩周期或加压力释放(S6安全区)；保留C1→空间升S2半开放。' },
+  { id:'R4-03', severity:'warning', name:'守护者+开放世界→守护关系稀释',
+    check:()=>has('C6')&&has('S3'),
+    explanation:'守护需稳定日常环境建立。不断移动稀释"照顾"的可见性。',
+    alternative:'保留C6→空间选S1/S2；保留S3→改用C2/C3，旅途中自然展开关系。' },
+  { id:'R4-04', severity:'synergy', name:'师徒+舞台×后台→教与学可见最大化',
+    check:()=>has('C4')&&has('S4'),
+    explanation:'前台展示成果，后台暴露过程→完整师徒叙事。创造营经典空间。',
+    alternative:null },
+  { id:'R4-05', severity:'synergy', name:'对照者+封闭空间→立场对比加速',
+    check:()=>has('C3')&&has('S1'),
+    explanation:'选对对照者+封闭=冲突自己发生，导演只需记录。最高效的选角+空间组合。',
+    alternative:null },
+
+  // ═══ R5: 真实性锚点 × 观看契约 (6条) ═══
+  { id:'R5-01', severity:'fatal', name:'沉默摄影机+观众投票→观察者变操纵者',
+    check:()=>has('A1')&&has('V2'),
+    explanation:'沉默摄影机承诺"只记录不干预"，但投票需要节目组执行淘汰→"通过观众的手完成干预"。自身机制推翻自身前提。',
+    alternative:'保留A1→观看只用V1纯围观；保留V2→锚点改用A4/A5，不再承诺"不干预"。' },
+  { id:'R5-02', severity:'fatal', name:'因果链+跳跃型→因果被剪辑打断',
+    check:()=>has('A2')&&has('T4'),
+    explanation:'因果链承诺"让观众自己看到为什么"，跳跃型跳过过程→因果链断裂。观众能感受到"中间被剪掉了"。',
+    alternative:'保留A2→放弃T4，改用T3实时记录；保留T4→不要承诺因果链，改用A4。' },
+  { id:'R5-03', severity:'warning', name:'失败展示+偶像养成→真实vs人设',
+    check:()=>has('A3')&&(hasDominant('E1')||hasAuxiliary('E1')),
+    explanation:'过度失败展示破坏偶像光环，过度美化破坏真实感——分寸问题，非逻辑矛盾。',
+    alternative:'失败后展示"站起来"的过程→失败成为弧线的一环。虎鲸的做法：失败是因果链一环，非卖惨。' },
+  { id:'R5-04', severity:'warning', name:'元叙事交叉+纯围观→交叉素材无人用',
+    check:()=>has('A4')&&has('V1'),
+    explanation:'A4依赖观众在社媒主动传播→V1纯围观=观众不参与→交叉素材白做。',
+    alternative:'保留A4→观看至少V3弹幕互动/V5社群共创；保留V1→锚点改用A1/A2。' },
+  { id:'R5-05', severity:'synergy', name:'观众在场+直播→实时验证真实性',
+    check:()=>has('A5')&&has('T6'),
+    explanation:'直播不可编辑+"我亲眼看到"=真实性感知天花板。2026年AI内容爆发背景下最强反AI武器。',
+    alternative:null },
+  { id:'R5-06', severity:'warning', name:'身体证据+纯数字空间→身体缺席',
+    check:()=>has('A6')&&has('S5'),
+    explanation:'身体微观信号（毛孔、微表情、不自觉颤抖）在数字空间中大幅损失→A6效果打折。',
+    alternative:'保留A6→空间必须有物理在场(S1-S4)；保留S5→锚点改用A5/A1。' },
+
+  // ═══ R6: 驱动力 × 筛选机制 (5条) ═══
+  { id:'R6-01', severity:'fatal', name:'转化驱动+自选退出→转化未完成就结束',
+    check:()=>(hasDominant('E1')||hasAuxiliary('E1'))&&has('F5'),
+    explanation:'转化驱动→观众投资"看他变成什么"。核心人物可以随时退出→投资可能无回报。"我追了他两个月他就走了？"',
+    alternative:'保留E1→限制F5触发条件，确保核心转化线不断裂；保留F5→驱动改用E2/E4。' },
+  { id:'R6-02', severity:'warning', name:'对抗驱动+不淘汰→对抗失后果',
+    check:()=>(hasDominant('E2')||hasAuxiliary('E2'))&&has('F7'),
+    explanation:'对抗需要"输赢有后果"。F7分流=输了无真代价→观众问"输赢有什么区别？"',
+    alternative:'保留E2→必须有明确淘汰(F1-F6中有后果的)；保留F7→驱动改用E1/E4。' },
+  { id:'R6-03', severity:'warning', name:'揭秘驱动+系统自动→秘密不需揭开',
+    check:()=>hasAny('E6')&&has('F6'),
+    explanation:'揭秘依赖信息不对称。系统自动=规则透明→没信息差→"规则都告诉我了，还有什么好揭晓？"',
+    alternative:'保留E6→筛选保留信息不对称空间(F1/F4)；保留F6→驱动改用E2/E5。' },
+  { id:'R6-04', severity:'synergy', name:'审美驱动+客观数据→客观标准保护审美',
+    check:()=>hasAny('E9')&&has('F2'),
+    explanation:'技艺审美+可量化标准=公正性↑、专注力在技艺本身。舞蹈风暴天然适配。',
+    alternative:null },
+  { id:'R6-05', severity:'synergy', name:'关系驱动+专家/数据筛选→关系不被功利化',
+    check:()=>hasAny('E4')&&hasAny('F1','F2'),
+    explanation:'筛选权不在参与者手上→关系纯粹，不被"你投我我投你"绑架。新西游记无淘汰=极致纯粹。',
+    alternative:null },
+
+  // ═══ R7: 驱动力 × 意义结构 (4条) ═══
+  { id:'R7-01', severity:'fatal', name:'转化驱动+悬置→转化被搁置',
+    check:()=>(hasDominant('E1')||hasAuxiliary('E1'))&&hasAny('O4','O5'),
+    explanation:'转化需要"变成什么"的终点。悬置/开放=转化无限推迟=告诉观众"没最后一章"。',
+    alternative:'保留E1→意义必须闭环；保留悬置→驱动改用E4/E5。' },
+  { id:'R7-02', severity:'fatal', name:'对抗驱动+悬置→胜负不结算',
+    check:()=>(hasDominant('E2')||hasAuxiliary('E2'))&&hasAny('O4','O5'),
+    explanation:'对抗需要胜负结算。最刚性约束——可以延迟揭晓，不能不揭晓。',
+    alternative:'保留E2→意义必须闭环(O1/O2/O3)；保留悬置→驱动改用E4/E1审美。' },
+  { id:'R7-03', severity:'warning', name:'揭秘驱动+反转→揭秘后被推翻',
+    check:()=>hasAny('E6')&&has('O5'),
+    explanation:'"追了三月的答案是错的"→可能产生"被耍了"的感受。反转必须让观众觉得"我早该想到"。',
+    alternative:'保留E6→意义用闭环；保留反转→确保所有反转线索在过程中可见可追溯。' },
+  { id:'R7-04', severity:'synergy', name:'关系驱动+开环/悬置→关系延续',
+    check:()=>hasAny('E4')&&hasAny('O4','O5'),
+    explanation:'关系不被"结局"定义→观众想象空间最大化→余味+持续讨论。新西游记=此公式天花板。',
+    alternative:null },
+
+  // ═══ R8: 商业可行性 (4条) ═══
+  { id:'R8-01', severity:'fatal', name:'投票/社群共创→中国政策红线',
+    check:()=>hasAny('V2','V5')&&has('F4'),
+    explanation:'中国内地政策：严禁饭圈打投。V2+V5+F4组合=必然触及红线。青春有你3倒奶事件后选秀被禁。',
+    alternative:'V5限定非淘汰事项（任务方向、福利分配）；禁用F4；改用V3+V4变现。' },
+  { id:'R8-02', severity:'warning', name:'直播打赏+叙事沉浸→第四面墙破裂',
+    check:()=>has('T6')&&totalSelected()>8,
+    explanation:'打赏环节=打破沉浸+提醒"这是商业"。感性叙事进行中突然感谢打赏→情绪中断。',
+    alternative:'打赏设计为节目内自然节点；或将变现放在节目外(付费笔记、会员、电商)。' },
+  { id:'R8-03', severity:'warning', name:'多重真实性锚点+广告植入→信任打折',
+    check:()=>['A1','A2','A3'].filter(id=>has(id)).length>=2,
+    explanation:'强真实性叙事(A1+A2+A3等多重)下，一个生硬广告=前面积累归零。种地吧广告争议即此。',
+    alternative:'品牌合作用场景自然融入(工具/设备赞助不口播)；或不在节目中过度承诺真实性。' },
+  { id:'R8-04', severity:'synergy', name:'偶像养成+长期商业→养成周期匹配变现',
+    check:()=>hasAny('E1')&&hasAny('O1','O4','O7'),
+    explanation:'养成核心变现窗口在"养成完成时"。周期3-6月→短视频/电商；1-2年→系列化融资；2年+→需多元收入。',
+    alternative:null },
+
+  // ═══ R9: 制作可行性 (4条) ═══
+  { id:'R9-01', severity:'warning', name:'直播+多线叙事→制作复杂度爆炸',
+    check:()=>has('T6')&&(state.characters.size>=3),
+    explanation:'直播无法后期编辑→多线并行的导播压力极大。观众弹幕"切回去！"是高频灾难。',
+    alternative:'保留T6→叙事线≤2条+明确空间分区(S6)；保留多线→改用T3+T2允许后期。' },
+  { id:'R9-02', severity:'warning', name:'封闭空间+长周期→心理安全风险',
+    check:()=>has('S1')&&has('T3'),
+    explanation:'长期封闭=心理压力持续累积无释放。参与者心理健康事故风险+舆论危机。',
+    alternative:'保留S1→缩短周期(≤2周)+心理支持团队；保留T3→空间改S2半开放。必须配F5退出机制。' },
+  { id:'R9-03', severity:'warning', name:'大规模选角+深度刻画→数vs深度',
+    check:()=>state.characters.size>=3&&(hasDominant('E1')||hasAuxiliary('E1')),
+    explanation:'人数↑=每人均时↓。观众可能"只认识前几名"——"炮灰选手"现象。',
+    alternative:'采用分层叙事：初期广度→中期聚焦10-12人深度；或总人数≤15。' },
+  { id:'R9-04', severity:'warning', name:'AI/虚拟元素+真实性锚点→技术暴露vs真实感',
+    check:()=>hasAny('S5')&&hasAny('A1','A2','A3','A6'),
+    explanation:'AI内容+真实性承诺=合规风险+信任风险。AI不可模拟人的真实情感体验。',
+    alternative:'AI做工具/探针，不做情感主体；AI"非人特质"可成内容但要明示。' },
+];
+
+// 运行所有规则
+function runDiagnosis() {
+  const fatal = [], warning = [], synergy = [];
+  DIAGNOSIS_RULES.forEach(rule => {
+    try {
+      if (rule.check()) {
+        if (rule.severity === 'fatal') fatal.push(rule);
+        else if (rule.severity === 'warning') warning.push(rule);
+        else if (rule.severity === 'synergy') synergy.push(rule);
+      }
+    } catch(e) { /* skip rule if check fails */ }
+  });
+  return { fatal, warning, synergy };
+}
+
+// 渲染诊断报告
+function renderDiagnosisReport(results, isClient) {
+  const reportDiv = document.getElementById('diagnosisReport');
+  const { fatal, warning, synergy } = results;
+  const totalIssues = fatal.length + warning.length;
+
+  const tag = isClient ? '<span class="diagnosis-report__client-tag">客户端规则引擎</span>' : '<span class="ai-badge">AI 深度分析</span>';
+
+  let scoreClass = 'ok', scoreText = '✅ 诊断通过';
+  if (fatal.length > 0) { scoreClass = 'fail'; scoreText = '❌ '+fatal.length+' 个致命冲突'; }
+  else if (warning.length > 2) { scoreClass = 'warn'; scoreText = '⚠️ '+warning.length+' 个风险点'; }
+
+  let html = '<div class="diagnosis-report__header"><h3>🔍 矛盾诊断报告</h3>'+tag+'<span class="diagnosis-report__score diagnosis-report__score--'+scoreClass+'">'+scoreText+'</span></div>';
+
+  if (fatal.length + warning.length + synergy.length === 0) {
+    html += '<div class="diagnosis-report__empty">未检测到已知冲突或协同效应。元素组合较安全，但仍建议通过 AI 做深度分析。</div>';
+  } else {
+    // Fatal section
+    if (fatal.length > 0) {
+      html += '<div class="diagnosis-section"><div class="diagnosis-section__title diagnosis-section__title--fatal">🔴 强互斥（必须修改）<span class="diagnosis-section__count diagnosis-section__count--fatal">'+fatal.length+'</span></div>';
+      fatal.forEach(r => {
+        html += '<div class="diagnosis-item diagnosis-item--fatal"><span class="diagnosis-item__rule-id">'+r.id+'</span><span class="diagnosis-item__name">'+r.name+'</span><div class="diagnosis-item__detail">'+r.explanation+'</div><div class="diagnosis-item__alternative">💡 '+r.alternative+'</div></div>';
+      });
+      html += '</div>';
+    }
+
+    // Warning section
+    if (warning.length > 0) {
+      html += '<div class="diagnosis-section"><div class="diagnosis-section__title diagnosis-section__title--warning">🟡 弱互斥（建议审视）<span class="diagnosis-section__count diagnosis-section__count--warning">'+warning.length+'</span></div>';
+      warning.forEach(r => {
+        html += '<div class="diagnosis-item diagnosis-item--warning"><span class="diagnosis-item__rule-id">'+r.id+'</span><span class="diagnosis-item__name">'+r.name+'</span><div class="diagnosis-item__detail">'+r.explanation+'</div>'+(r.alternative?'<div class="diagnosis-item__alternative">💡 '+r.alternative+'</div>':'')+'</div>';
+      });
+      html += '</div>';
+    }
+
+    // Synergy section
+    if (synergy.length > 0) {
+      html += '<div class="diagnosis-section"><div class="diagnosis-section__title diagnosis-section__title--synergy">🟢 协同效应（正向组合）<span class="diagnosis-section__count diagnosis-section__count--synergy">'+synergy.length+'</span></div>';
+      synergy.forEach(r => {
+        html += '<div class="diagnosis-item diagnosis-item--synergy"><span class="diagnosis-item__rule-id">'+r.id+'</span><span class="diagnosis-item__name">'+r.name+'</span><div class="diagnosis-item__detail">'+r.explanation+'</div></div>';
+      });
+      html += '</div>';
+    }
+  }
+
+  reportDiv.innerHTML = html;
+  reportDiv.classList.add('diagnosis-report--visible');
+  reportDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// 隐藏诊断报告
+function hideDiagnosisReport() {
+  const reportDiv = document.getElementById('diagnosisReport');
+  reportDiv.classList.remove('diagnosis-report--visible');
+  reportDiv.innerHTML = '';
+}
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+
+	// 全局关闭 popover：点击/触摸 chip 以外区域自动隐藏
+	document.addEventListener('click', (e) => {
+		if (!e.target.closest('.chip')) {
+			hidePopover();
+		}
+	});
+	document.addEventListener('touchend', (e) => {
+		if (!e.target.closest('.chip')) {
+			hidePopover();
+		}
+	});
+	// 滚动时自动隐藏 popover
+	window.addEventListener('scroll', () => hidePopover(), { passive: true });
+
+// ═══════════════════════════════════
+// LAYER MANAGEMENT (v1.6)
+// ═══════════════════════════════════
+
+function createLayerDivider(layerNum) {
+  const div = document.createElement('div');
+  div.className = 'layer-divider';
+  div.dataset.layer = layerNum;
+  const labels = ['', 'L1 发端层', 'L2 丰富层', 'L3 审视层'];
+  const descs = ['', '先确定叙事的入口和节奏', '🔒 完成 L1 后解锁', '🔒 完成 L2 后解锁'];
+  const badgeClass = 'layer-badge';
+  var signalBtn = layerNum === 1 ? '<button class="btn btn--ghost btn--signal" onclick="toggleSignalPanel()">📡 信号</button><button class="btn btn--ghost btn--signal" onclick="toggleKoreanShowPanel()">🇰🇷 韩综</button>' : '';
+  div.innerHTML = '<span class="' + badgeClass + '">' + labels[layerNum] + '</span> <span class="layer-desc" data-layer-desc="' + layerNum + '">' + descs[layerNum] + '</span>' + signalBtn;
+  return div;
+}
+
+function syncLayerState() {
+  const l1Complete = state.narrative.dominant.size > 0 && state.time.size > 0;
+  const l2Complete = state.space.size > 0 && state.filter.size > 0
+                  && state.characters.size > 0; // viewing optional
+
+  // Forward: unlock
+  if (l1Complete && !state.layerUnlocked[1]) setLayerLock(2, false);
+  if (l2Complete && !state.layerUnlocked[2]) setLayerLock(3, false);
+
+  // Reverse: re-lock
+  if (!l1Complete && state.layerUnlocked[1]) {
+    setLayerLock(2, true);
+    setLayerLock(3, true);
+  }
+  if (!l2Complete && state.layerUnlocked[2]) {
+    setLayerLock(3, true);
+  }
+}
+
+function setLayerLock(layerNum, locked) {
+  state.layerUnlocked[layerNum - 1] = !locked;
+  document.querySelectorAll('.card[data-layer="' + layerNum + '"]').forEach(function(card) {
+    card.classList.toggle('card--locked', locked);
+  });
+  var desc = document.querySelector('[data-layer-desc="' + layerNum + '"]');
+  if (desc) {
+    desc.textContent = locked
+      ? '🔒 完成 L' + (layerNum - 1) + ' 后解锁'
+      : layerNum === 2 ? '在发端引擎基础上丰富方案' : '脱离时间线，回头审视整体';
+  }
+}
+
+function handleL1Change() {
+  var downstream = [].concat(
+    Array.from(state.space), Array.from(state.filter), Array.from(state.characters),
+    Array.from(state.viewing), Array.from(state.exit), Array.from(state.authenticity)
+  );
+  if (downstream.length === 0) return true;
+  if (!confirm('修改 L1 发端元素会清空 L2/L3 的所有选择。确定要继续吗？')) return false;
+
+  ['space','filter','characters','viewing','exit','authenticity'].forEach(function(k) { state[k].clear(); });
+  showBacktrackBanner('⚠️ 发端引擎已修改，L2/L3 已重置');
+  return true;
+}
+
+function showBacktrackBanner(msg) {
+  var banner = document.getElementById('backtrackBanner');
+  banner.textContent = msg;
+  banner.classList.add('show');
+  clearTimeout(banner._timeout);
+  banner._timeout = setTimeout(function() { banner.classList.remove('show'); }, 4000);
+}
+
+// ═══════════════════════════════════
+// GENRE MANAGEMENT (v1.6)
+// ═══════════════════════════════════
+
+const GENRE_CONFIGS = {
+  talent_show: {
+    name: '选秀/竞技类', icon: '🏆',
+    l1Hints: { narrative: '对抗引擎或成长引擎是最自然的发端', time: '周期性节奏是标配' },
+    l1Suggest: { dominant: ['E2', 'E1'], auxiliary: ['E3', 'E4'] },
+    description: '淘汰+晋级驱动，筛选机制是核心'
+  },
+  dating: {
+    name: '恋综/情感类', icon: '💕',
+    l1Hints: { narrative: '关系引擎主导', time: '实时记录或周期性' },
+    l1Suggest: { dominant: ['E4'], auxiliary: ['E7', 'E3'] },
+    description: '关系建立与破裂驱动，人物网格是核心'
+  },
+  observation: {
+    name: '观察类', icon: '👀',
+    l1Hints: { narrative: '揭秘引擎或治愈引擎', time: '慢时间或实时记录' },
+    l1Suggest: { dominant: ['E6', 'E7'], auxiliary: ['E5'] },
+    description: '日常中的非常规，观看契约是核心'
+  },
+  survival: {
+    name: '生存/挑战类', icon: '🔥',
+    l1Hints: { narrative: '对抗引擎或实验引擎', time: '倒计时或自然节律' },
+    l1Suggest: { dominant: ['E2', 'E5'], auxiliary: ['E9'] },
+    description: '资源稀缺+困境驱动，空间规则和筛选机制并重'
+  },
+  communal: {
+    name: '群居实验类', icon: '🏠',
+    l1Hints: { narrative: '关系引擎或实验引擎', time: '实时记录或周期性' },
+    l1Suggest: { dominant: ['E5', 'E4'], auxiliary: ['E7'] },
+    description: '陌生人共处实验，人物网格+空间规则为核心'
+  },
+  travel: {
+    name: '旅行/公路类', icon: '🚐',
+    l1Hints: { narrative: '幽默引擎或审美驱动', time: '跳跃型或碎片化' },
+    l1Suggest: { dominant: ['E8', 'E3'], auxiliary: ['E9'] },
+    description: '位移+遭遇驱动，时间结构（行程）主导'
+  }
+};
+
+function setGenre(genreKey) {
+  state.activeGenre = genreKey || null;
+  if (state.activeGenre) {
+    var cfg = GENRE_CONFIGS[state.activeGenre];
+    updateL1Hints(cfg);
+    highlightSuggested(cfg);
+  } else {
+    resetL1Hints();
+    clearSuggested();
+  }
+  refreshSignalPanel();
+  refreshKoreanShowPanel();
+}
+
+function updateL1Hints(cfg) {
+  document.querySelectorAll('.card[data-layer="1"]').forEach(function(card) {
+    var catId = card.dataset.catId;
+    if (cfg.l1Hints[catId]) {
+      var hintEl = card.querySelector('.card__hint');
+      if (hintEl) hintEl.textContent = cfg.l1Hints[catId];
+    }
+  });
+}
+
+function resetL1Hints() {
+  CATEGORIES.filter(function(c) { return c.layer === 1; }).forEach(function(cat) {
+    var card = document.querySelector('.card[data-cat-id="' + cat.id + '"]');
+    if (card) {
+      var hintEl = card.querySelector('.card__hint');
+      if (hintEl) hintEl.textContent = cat.hint;
+    }
+  });
+}
+
+function highlightSuggested(cfg) {
+  clearSuggested();
+  var ids = (cfg.l1Suggest.dominant || []).concat(cfg.l1Suggest.auxiliary || []);
+  ids.forEach(function(id) {
+    var chip = document.querySelector('.chip[data-el-id="' + id + '"]');
+    if (chip && !chip.classList.contains('chip--selected') && !chip.classList.contains('chip--dominant') && !chip.classList.contains('chip--auxiliary')) {
+      chip.classList.add('chip--suggested');
+    }
+  });
+}
+
+function clearSuggested() {
+  document.querySelectorAll('.chip--suggested').forEach(function(c) { c.classList.remove('chip--suggested'); });
+}
+
+renderAll();
+</script>
+</body>
+</html>

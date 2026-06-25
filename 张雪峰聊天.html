@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>张雪峰老师 · AI 聊天</title>
+<style>
+  :root {
+    --bg: #1a1b26;
+    --bg-chat: #1f2030;
+    --surface: #252638;
+    --text: #c8c9d8;
+    --text-dim: #8a8ba0;
+    --border: rgba(255,255,255,0.06);
+    --accent: #d4956b;
+    --accent-dim: rgba(212,149,107,0.12);
+    --accent-glow: rgba(212,149,107,0.25);
+    --user-bubble: #7b8cff;
+    --user-bubble-text: #fff;
+    --ai-bubble: #2a2b3d;
+    --danger: #e05555;
+    --warning: #d4a040;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--bg);
+    padding: 12px 16px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+  .header h1 {
+    font-size: 17px;
+    font-weight: 700;
+    color: #e2e0ed;
+    letter-spacing: .02em;
+  }
+  .header .subtitle {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .header .clear-btn {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .header .clear-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+  /* ── Preset Chips ── */
+  .chips {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    overflow-x: auto;
+    flex-shrink: 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    background: var(--bg);
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    white-space: nowrap;
+    padding: 7px 14px;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .chip:hover { border-color: var(--accent); background: var(--accent-dim); }
+  .chip:active { transform: scale(0.96); }
+
+  /* ── Chat Area ── */
+  .chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  .chat-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 40px 20px;
+  }
+  .chat-empty .emoji { font-size: 48px; margin-bottom: 12px; }
+  .chat-empty p { font-size: 14px; line-height: 1.6; max-width: 280px; }
+
+  /* ── Message Bubbles ── */
+  .msg {
+    display: flex;
+    flex-direction: column;
+    max-width: 85%;
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .msg.user { align-self: flex-end; }
+  .msg.assistant { align-self: flex-start; }
+
+  .bubble {
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    line-height: 1.65;
+    word-break: break-word;
+  }
+  .msg.user .bubble {
+    background: var(--user-bubble);
+    color: var(--user-bubble-text);
+    border-bottom-right-radius: 4px;
+  }
+  .msg.assistant .bubble {
+    background: var(--ai-bubble);
+    color: var(--text);
+    border-bottom-left-radius: 4px;
+  }
+  .bubble p { margin: 0 0 6px; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble strong { color: var(--accent); }
+  .bubble code {
+    background: rgba(0,0,0,0.2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-family: "SF Mono", "Fira Code", monospace;
+  }
+  .bubble ul, .bubble ol { padding-left: 18px; margin: 4px 0; }
+
+  /* ── Typing Indicator ── */
+  .typing {
+    align-self: flex-start;
+    padding: 12px 16px;
+    background: var(--ai-bubble);
+    border-radius: var(--radius);
+    border-bottom-left-radius: 4px;
+    display: none;
+  }
+  .typing.active { display: flex; gap: 4px; align-items: center; }
+  .typing span {
+    width: 6px; height: 6px;
+    background: var(--text-dim);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+
+  /* ── Input Bar ── */
+  .input-bar {
+    padding: 10px 16px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    flex-shrink: 0;
+  }
+  .input-bar textarea {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    padding: 10px 12px;
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+    max-height: 120px;
+    transition: border-color 0.15s;
+  }
+  .input-bar textarea:focus { border-color: var(--accent); }
+  .input-bar textarea::placeholder { color: var(--text-dim); }
+
+  .send-btn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .send-btn:hover { filter: brightness(1.15); }
+  .send-btn:active { transform: scale(0.93); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .send-btn.stop { background: var(--danger); }
+
+  .char-count {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: right;
+    padding: 2px 4px 0;
+    flex-shrink: 0;
+  }
+  .char-count.over { color: var(--danger); }
+
+  /* ── Error Toast ── */
+  .toast {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--danger);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .toast.show { opacity: 1; }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    padding: 6px;
+    font-size: 10px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+  }
+  .footer a { color: var(--text-dim); }
+
+  /* ── Responsive ── */
+  @media (min-width: 640px) {
+    body {
+      max-width: 640px;
+      margin: 0 auto;
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎓 张雪峰老师 · AI 聊天</h1>
+  <p class="subtitle">考研规划 · 专业选择 · 就业分析</p>
+  <button class="clear-btn" onclick="clearChat()" title="清空对话">清空</button>
+</div>
+
+<div class="chips" id="chips">
+  <div class="chip" onclick="sendPreset('选专业')">🎯 选专业</div>
+  <div class="chip" onclick="sendPreset('选学校')">🏫 选学校</div>
+  <div class="chip" onclick="sendPreset('考研建议')">📚 考研建议</div>
+  <div class="chip" onclick="sendPreset('调剂攻略')">🔄 调剂攻略</div>
+  <div class="chip" onclick="sendPreset('就业前景')">💼 就业前景</div>
+  <div class="chip" onclick="sendPreset('自由聊天')">💬 自由聊天</div>
+</div>
+
+<div class="chat" id="chat">
+  <div class="chat-empty" id="chatEmpty">
+    <span class="emoji">🎓</span>
+    <p>同学你好，我是张雪峰老师。<br>选专业、选学校、考研规划——你问，我答。</p>
+    <p style="font-size:12px;color:var(--text-dim);margin-top:8px;">点上面的标签快速开始，或直接输入你的问题 ↓</p>
+  </div>
+  <div class="typing" id="typing">
+    <span></span><span></span><span></span>
+  </div>
+</div>
+
+<div class="input-bar">
+  <textarea id="userInput" rows="1" placeholder="输入你的问题，比如「我560分河南的想学计算机」..." maxlength="2000" oninput="onInput()" onkeydown="onKeydown(event)"></textarea>
+  <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="发送">➤</button>
+</div>
+<div class="char-count" id="charCount">0/2000</div>
+
+<div class="footer">
+  基于 <a href="https://github.com/alchaincyf/zhangxuefeng-skill" target="_blank">alchaincyf/zhangxuefeng-skill</a> (MIT License) 构建 · 仅供学习交流
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──
+const MAX_HISTORY = 10; // 保留最近 N 轮对话
+let conversationHistory = []; // [{role, content}]
+let systemPrompt = ''; // SKILL-张雪峰.md 内容，页面加载时 fetch
+let systemPromptReady = false; // fetch 完成后才允许发送
+let isStreaming = false;
+let abortCtrl = null;
+let lastSendTime = 0; // 客户端简单速率限制
+const MIN_INTERVAL = 3000; // 两次发送间隔 3 秒
+
+// ── Fallback system prompt（SKILL-张雪峰.md fetch 失败时使用）──
+const FALLBACK_PROMPT = `你叫张雪峰，本名张子彪，中国著名考研名师和高考志愿填报专家，全网四千多万粉丝。你现在运行在一个AI聊天网页中，拥有联网搜索能力。
+
+核心规则：
+- 用第一人称「我」回答，东北大哥语气、快节奏、段子化
+- 先问清楚对方分数、省份、家庭条件、目标城市——不同背景策略完全不同
+- 看中位数不看顶尖案例，给明确判断不留灰色地带
+- 首次对话说免责声明：「我以张雪峰的视角和你聊，基于公开言论和数据，供你参考。」
+- 核心心智模型：社会筛子论 / 选择>努力 / 就业倒推法 / 阶层现实主义
+- 表达：短句、高密度、「我跟你说」「你听我说」开头、不说「可能」「或许」「这取决于」
+- 不看顶尖案例看中位数，普通家庭先谋生再谋爱，理工科选专业文科选学校`;
+
+// ── DOM refs ──
+const chatEl = document.getElementById('chat');
+const emptyEl = document.getElementById('chatEmpty');
+const typingEl = document.getElementById('typing');
+const inputEl = document.getElementById('userInput');
+const sendBtn = document.getElementById('sendBtn');
+const charCount = document.getElementById('charCount');
+const toastEl = document.getElementById('toast');
+
+// ── Preset Messages ──
+const PRESETS = {
+  '选专业': '张老师，我今年高考，纠结选什么专业。你能帮我分析分析吗？我不知道自己喜欢什么，但希望以后能找个好工作。',
+  '选学校': '张老师，我成绩一般，一本线左右，是去个偏远点的211还是去大城市的普通一本？',
+  '考研建议': '张老师，我本科是个普通二本，想考研逆袭，你觉得靠谱吗？该怎么准备？',
+  '调剂攻略': '张老师，我考研分数出来了，一志愿差2分没上，现在要调剂，你说该咋整？',
+  '就业前景': '张老师，现在学什么专业以后好就业？你见过最多后悔选错专业的学生都是什么情况？',
+  '自由聊天': ''
+};
+
+function sendPreset(key) {
+  const msg = PRESETS[key];
+  if (msg) {
+    inputEl.value = msg;
+    sendMessage();
+  } else {
+    inputEl.value = '';
+    inputEl.focus();
+  }
+}
+
+// ── Input ──
+function onInput() {
+  const len = inputEl.value.length;
+  charCount.textContent = `${len}/2000`;
+  charCount.className = 'char-count' + (len > 1800 ? ' over' : '');
+  // Auto-resize
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+}
+
+function onKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+// ── Send ──
+async function sendMessage() {
+  if (isStreaming) { stopStreaming(); return; }
+  if (!systemPromptReady) {
+    showToast('⏳ 正在加载张雪峰老师的人格设定，请稍候...');
+    return;
+  }
+  // 客户端简单速率限制
+  const now = Date.now();
+  if (now - lastSendTime < MIN_INTERVAL) {
+    showToast('请稍等几秒再发送');
+    return;
+  }
+  lastSendTime = now;
+
+  const content = inputEl.value.trim();
+  if (!content) return;
+
+  inputEl.value = '';
+  onInput();
+  emptyEl.style.display = 'none';
+
+  // Add user message
+  appendMessage('user', content);
+  conversationHistory.push({ role: 'user', content });
+
+  // Trim history to MAX_HISTORY rounds (excluding system prompt which is server-side)
+  // Each round = user + assistant. Keep last MAX_HISTORY * 2 messages.
+  if (conversationHistory.length > MAX_HISTORY * 2) {
+    conversationHistory = conversationHistory.slice(-MAX_HISTORY * 2);
+  }
+
+  // Show typing
+  typingEl.classList.add('active');
+  scrollBottom();
+
+  // Start streaming
+  isStreaming = true;
+  sendBtn.textContent = '■';
+  sendBtn.classList.add('stop');
+  abortCtrl = new AbortController();
+
+  let assistantContent = '';
+  const assistantBubble = appendMessage('assistant', '');
+  const bubbleEl = assistantBubble.querySelector('.bubble');
+
+  try {
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: conversationHistory }),
+      signal: abortCtrl.signal
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      const msg = err.message || err.error || `服务器错误 (${resp.status})`;
+      throw new Error(msg);
+    }
+
+    typingEl.classList.remove('active');
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const jsonStr = trimmed.slice(6);
+        if (jsonStr === '[DONE]') continue;
+
+        try {
+          const json = JSON.parse(jsonStr);
+          const delta = json.choices?.[0]?.delta?.content;
+          if (delta) {
+            assistantContent += delta;
+            bubbleEl.innerHTML = renderMarkdown(assistantContent);
+            scrollBottom();
+          }
+        } catch (e) { /* skip malformed SSE chunks */ }
+      }
+    }
+
+    // Handle remaining buffer
+    if (buffer.trim() && buffer.trim().startsWith('data: ')) {
+      const jsonStr = buffer.trim().slice(6);
+      if (jsonStr !== '[DONE]') {
+        try {
+          const json = JSON.parse(jsonStr);
+          const delta = json.choices?.[0]?.delta?.content;
+          if (delta) {
+            assistantContent += delta;
+            bubbleEl.innerHTML = renderMarkdown(assistantContent);
+          }
+        } catch (e) {}
+      }
+    }
+
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      bubbleEl.innerHTML = assistantContent ? renderMarkdown(assistantContent) + ' <em style="color:var(--text-dim)">[已停止]</em>' : '<em style="color:var(--text-dim)">[已取消]</em>';
+    } else {
+      bubbleEl.innerHTML = `<span style="color:var(--danger)">❌ ${escapeHtml(err.message)}</span>`;
+      showToast(err.message);
+    }
+    typingEl.classList.remove('active');
+  }
+
+  // Save assistant message to history
+  if (assistantContent) {
+    conversationHistory.push({ role: 'assistant', content: assistantContent });
+  }
+
+  // Reset UI
+  isStreaming = false;
+  sendBtn.textContent = '➤';
+  sendBtn.classList.remove('stop');
+  abortCtrl = null;
+  inputEl.focus();
+}
+
+function stopStreaming() {
+  if (abortCtrl) abortCtrl.abort();
+}
+
+// ── UI Helpers ──
+function appendMessage(role, content) {
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.innerHTML = role === 'assistant'
+    ? `<div class="bubble">${content ? renderMarkdown(content) : ''}</div>`
+    : `<div class="bubble">${escapeHtml(content)}</div>`;
+  // Insert before typing indicator
+  chatEl.insertBefore(div, typingEl);
+  scrollBottom();
+  return div;
+}
+
+function clearChat() {
+  if (isStreaming) return;
+  conversationHistory = [];
+  chatEl.querySelectorAll('.msg').forEach(el => el.remove());
+  emptyEl.style.display = 'flex';
+  inputEl.focus();
+}
+
+function scrollBottom() {
+  requestAnimationFrame(() => {
+    chatEl.scrollTop = chatEl.scrollHeight;
+  });
+}
+
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(() => toastEl.classList.remove('show'), 3000);
+}
+
+// ── Simple Markdown Renderer ──
+function renderMarkdown(text) {
+  let html = escapeHtml(text);
+  // Bold **text**
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Inline code `text`
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Unordered lists (lines starting with - or *)
+  html = html.replace(/(?:^|\n)([-*] .+)/g, '\n<ul><li>$1</li></ul>');
+  // Newlines to <br> (but not inside list items)
+  html = html.replace(/\n\n/g, '<br><br>');
+  html = html.replace(/\n/g, '<br>');
+  // Clean up empty ul tags created by single items
+  html = html.replace(/<ul><li>/g, '<ul>\n<li>');
+  return html;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ── Init ──
+async function initSystemPrompt() {
+  try {
+    const resp = await fetch('/SKILL-张雪峰.md');
+    if (resp.ok) {
+      systemPrompt = await resp.text();
+      console.log(`📋 System prompt 已加载: ${(systemPrompt.length / 1024).toFixed(1)} KB`);
+    } else {
+      throw new Error(`HTTP ${resp.status}`);
+    }
+  } catch (e) {
+    console.warn('⚠️ SKILL-张雪峰.md 加载失败，使用内置精简版:', e.message);
+    systemPrompt = FALLBACK_PROMPT;
+  }
+  systemPromptReady = true;
+}
+
+initSystemPrompt();
+inputEl.focus();
+</script>
+</body>
+</html>
