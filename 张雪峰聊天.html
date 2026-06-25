@@ -441,10 +441,24 @@ async function sendMessage() {
   const bubbleEl = assistantBubble.querySelector('.bubble');
 
   try {
-    const resp = await fetch('/api/chat', {
+    // 构建消息列表：system prompt + 对话历史
+    const apiMessages = [];
+    if (systemPrompt) {
+      apiMessages.push({ role: 'system', content: systemPrompt });
+    }
+    apiMessages.push(...conversationHistory);
+
+    const resp = await fetch('/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: conversationHistory }),
+      body: JSON.stringify({
+        model: 'deepseek-v4-pro',
+        messages: apiMessages,
+        stream: true,
+        search_enable: true,
+        temperature: 0.9,
+        max_tokens: 4096
+      }),
       signal: abortCtrl.signal
     });
 
