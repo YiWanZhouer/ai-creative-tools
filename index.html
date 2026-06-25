@@ -20,6 +20,9 @@
     --dominant: #d4956b;
     --dominant-dim: rgba(212,149,107,0.12);
     --dominant-glow: rgba(212,149,107,0.25);
+    --tertiary: #4a9c7c;
+    --tertiary-dim: rgba(74,156,124,0.12);
+    --tertiary-glow: rgba(74,156,124,0.25);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -188,6 +191,22 @@
     color: var(--dominant);
   }
 
+  /* ── 张雪峰聊天（独立工具，tertiary 色系）── */
+  .card-zhang {
+    border-color: rgba(74,156,124,0.15);
+  }
+  .card-zhang::before {
+    background: var(--tertiary);
+  }
+  .card-zhang:hover {
+    border-color: rgba(74,156,124,0.35);
+    box-shadow: 0 0 32px var(--tertiary-dim), 0 4px 20px rgba(0,0,0,0.3);
+  }
+  .card-zhang .step-badge {
+    background: var(--tertiary-dim);
+    color: var(--tertiary);
+  }
+
   /* ── 页脚 ── */
   .footer {
     text-align: center;
@@ -206,7 +225,7 @@
 
 <div class="header">
   <h1>AI 创意工具箱</h1>
-  <p class="subtitle">综艺策划 · 从骨架到方案</p>
+  <p class="subtitle">综艺策划 · AI 对话 · 创意工具</p>
 </div>
 
 <div class="tools">
@@ -230,6 +249,19 @@
     <div class="icon">💡</div>
     <h2>创意方案生成器<span class="ver">v2.4</span></h2>
     <p>四维设计矩阵 · 灵魂三问 · 矛盾诊断引擎 —— 输入一个概念，输出一份可直接汇报的方案，含致命缺陷检测</p>
+  </a>
+
+  <!-- 连接线 -->
+  <div class="step-connector" style="margin-top:0">
+    <span class="step-arrow">↓</span>
+  </div>
+
+  <!-- 张雪峰AI聊天（独立工具，tertiary 色系）-->
+  <a class="tool-card card-zhang" href="张雪峰聊天.html">
+    <span class="step-badge">🎓</span>
+    <div class="icon">🎙️</div>
+    <h2>张雪峰老师 · AI 聊天<span class="ver">v1.0</span></h2>
+    <p>考研规划 · 专业选择 · 就业分析 —— DeepSeek 驱动，联网搜索最新数据，张雪峰风格直接给明确判断，不废话</p>
   </a>
 
 </div>
