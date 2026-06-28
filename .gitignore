@@ -1,13 +1,18 @@
-# Ignore everything except HTML, JS, deploy files, and change records
+# Ignore everything except HTML, Python scripts, and change records
 *
 !*.html
 !*.js
+!*.py
 !SKILL-*.md
 !README.md
-!CLAUDE.md
 !.gitignore
-!deploy.sh
-!deploy/
-!deploy/**
 !变更记录/
 !变更记录/*.md
+!版本归档/
+!版本归档/**/*
+proxy.py
+.env
+signal_feed.json
+logs/
+.DS_Store
+!seasonal_events.json
