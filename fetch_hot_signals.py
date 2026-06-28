@@ -2,7 +2,7 @@
 """
 fetch_hot_signals.py — 每日热点快报管线
 每日 09:00 由 DSM Task Scheduler 触发，或手动执行。
-抓取 4 源热搜 → 去重 → DeepSeek 分析 → 原子写入 signal_feed.json
+抓取 6 源热搜 → 去重 → DeepSeek 分析 → 原子写入 signal_feed.json
 """
 
 import os, sys, re, json, time, tempfile, logging, atexit, shutil
@@ -21,20 +21,26 @@ ENV_PATH = os.path.join(SCRIPT_DIR, '.env')
 LOG_DIR = os.path.join(SCRIPT_DIR, 'logs')
 OUTPUT_FILE = os.path.join(SCRIPT_DIR, 'signal_feed.json')
 LOCK_DIR = '/tmp/daily-hotspot.lock'
+CALENDAR_PATH = os.path.join(SCRIPT_DIR, 'seasonal_events.json')
+CALENDAR_WINDOW_DAYS = 45
 
 DRY_RUN = '--dry-run' in sys.argv
 
 
 def _parse_iso(ts_str: str) -> datetime:
-    """Parse ISO timestamp, compatible with Python 3.8+ including +08:00 format."""
+    """Parse ISO timestamp, always returns naive datetime for safe comparison."""
     if not ts_str:
         return datetime(2000, 1, 1)
     try:
-        return datetime.fromisoformat(ts_str)
+        dt = datetime.fromisoformat(ts_str)
     except (ValueError, TypeError):
         # Python 3.8-3.10 polyfill: strip timezone colon (+08:00 → +0800)
         clean = re.sub(r'([+-]\d{2}):(\d{2})$', r'\1\2', str(ts_str))
-        return datetime.fromisoformat(clean)
+        dt = datetime.fromisoformat(clean)
+    # Strip tzinfo so comparison with naive datetime.now() never raises TypeError
+    if dt.tzinfo is not None:
+        dt = dt.replace(tzinfo=None)
+    return dt
 
 # ── Logging ──────────────────────────────────────────────
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -87,7 +93,7 @@ def _http_get(url, headers=None, timeout=15):
 # ═══════════════════════════════════════════════════════════
 DAILYHOT_API = 'http://127.0.0.1:6688'
 
-def fetch_dailyhotapi(source: str, top_n=20):
+def fetch_dailyhotapi(source: str, top_n=100):
     """通用 DailyHotApi 抓取函数。source: weibo|zhihu|bilibili|..."""
     try:
         text = _http_get(f'{DAILYHOT_API}/{source}', timeout=10)
@@ -113,6 +119,18 @@ def fetch_zhihu_hot():
     return fetch_dailyhotapi('zhihu')
 
 
+def fetch_douyin_hot():
+    return fetch_dailyhotapi('douyin')
+
+
+def fetch_baidu_hot():
+    return fetch_dailyhotapi('baidu')
+
+
+def fetch_douban_group_hot():
+    return fetch_dailyhotapi('douban-group')
+
+
 def fetch_bilibili_hot():
     """B站热门 TOP10"""
     try:
@@ -129,35 +147,6 @@ def fetch_bilibili_hot():
                 for item in items[:10] if item.get('title')]
     except Exception as e:
         log.warning(f'[bilibili] 抓取失败: {e}')
-        return []
-
-
-def fetch_tophub():
-    """今日热榜聚合 TOP20"""
-    try:
-        text = _http_get('https://tophub.fun', timeout=10)
-        # Simple regex extract
-        pattern = r'<a[^>]*class="[^"]*item[^"]*"[^>]*>.*?<span[^>]*>(\d+)</span>\s*([^<]+)'
-        matches = re.findall(pattern, text, re.DOTALL)
-        if matches:
-            return [{'title': m[1].strip(),
-                     'source': 'tophub',
-                     'hot': m[0]}
-                    for m in matches[:20] if m[1].strip()]
-    except Exception as e:
-        log.debug(f'[tophub] 主端点失败: {e}')
-
-    # Fallback: use tenapi.cn aggregate
-    try:
-        text = _http_get('https://tenapi.cn/v2/baiduhot', timeout=10)
-        data = json.loads(text)
-        items = data.get('data', []) or data if isinstance(data, list) else []
-        return [{'title': item.get('name', item.get('title', '')),
-                 'source': 'tophub',
-                 'hot': item.get('hot', '')}
-                for item in items[:20] if item.get('name') or item.get('title')]
-    except Exception as e:
-        log.warning(f'[tophub] 所有端点失败: {e}')
         return []
 
 
@@ -199,14 +188,14 @@ def merge_dedup(all_topics: list, threshold=0.7) -> list:
 # 4. DEEPSEEK API
 # ═══════════════════════════════════════════════════════════
 DEEPSEEK_PROMPT = """你是一个综艺节目策划顾问。以下是当前中国互联网的全网热搜数据，
-包含微博热搜、知乎热榜、B站热门、今日热榜四个来源的 TOP 条目。
+包含微博热搜、知乎热榜、B站热门、抖音热点、百度热搜、豆瓣小组六个来源的 TOP 条目。
 
 请对每条热搜进行分析，输出一个 JSON 对象。格式：
 
 {
   "generated_at": "ISO时间戳",
   "ttl_hours": 24,
-  "sources": ["weibo", "zhihu", "bilibili", "tophub"],
+  "sources": ["weibo", "zhihu", "bilibili", "douyin", "baidu", "douban-group"],
   "total_raw": 原始条目数,
   "signals": [
     {
@@ -232,9 +221,20 @@ E5=情境实验, E6=成长/蜕变, E7=日常/治愈, E8=幽默/游戏, E9=规则
 talent_show=选秀/竞技, dating=恋综/情感, observation=观察类,
 survival=生存/挑战, communal=群居实验, travel=旅行/公路
 
+数据源特征指南：
+- 微博：文娱话题、公共讨论、社会事件（综艺策划最强信号源）
+- 知乎：社会议题、深度讨论、代际冲突（适合观察类/群居实验选题）
+- B站：年轻用户兴趣、ACG/生活方式/高赞内容
+- 抖音：短视频趋势、流行文化、挑战赛/素人改造等品类发源地
+- 百度：搜索行为趋势、含电影/电视剧子类，直接对标娱乐产业
+- 豆瓣小组：生活方式讨论、情绪趋势、代际态度。从豆瓣话题中识别生活方式趋势和代际价值观信号，筛选有大众共鸣潜力的
+
 规则：
+- channel 必须严格从这 5 个值中选择：热议、高赞、剧集、日韩、热门。禁止自创频道名（如观察/旅行/游戏等）
+- dominant 和 auxiliary 必须是数组格式，例如 ["E4"]，即使只有一个引擎也要用方括号包裹。auxiliary 为空时写 "auxiliary": []
 - 只输出 JSON，不要任何其他文字
-- 最多 20 条信号，优先策划价值最高的
+- 从所有数据中筛选有综艺策划价值的信号，不设数量上限。不适合综艺策划的热搜直接跳过
+- 同一事件在多个源中出现（多源共振）→ 合并为一条，platforms 列出所有来源，score 额外 +1
 - 同主题跨平台出现 → 合并为一条，platforms 列出所有来源
 - angle 必须具体可操作，不要泛泛而谈
 - dominant 必须恰好选 1 个最核心引擎 ID（E1-E9），auxiliary 选 0-2 个辅助引擎
@@ -249,12 +249,137 @@ Ensure: no trailing commas, all strings use double quotes,
 newlines in strings are escaped as \\n."""
 
 
-def build_prompt(merged_topics: list, extra_system: str = "") -> str:
+def load_calendar(json_path: str = CALENDAR_PATH) -> list:
+    """读取日历JSON，返回±45天窗口内的事件列表（只读，无副作用）。"""
+    if not os.path.exists(json_path):
+        log.warning(f'日历文件不存在: {json_path}，跳过日历注入')
+        return []
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, ValueError) as e:
+        log.warning(f'日历文件解析失败: {e}，跳过日历注入')
+        return []
+
+    events = data.get('events', [])
+    if not events:
+        return []
+
+    now = datetime.now()
+    window_start = now - timedelta(days=CALENDAR_WINDOW_DAYS)
+    window_end = now + timedelta(days=CALENDAR_WINDOW_DAYS)
+
+    matched = []
+    for evt in events:
+        try:
+            dr = evt.get('date_range', '')
+            start_str, end_str = dr.split('~')
+            start_m, start_d = int(start_str[:2]), int(start_str[3:])
+            end_m, end_d = int(end_str[:2]), int(end_str[3:])
+
+            # Year assignment: if start_month > end_month → cross-year
+            if start_m > end_m:
+                evt_start = datetime(now.year, start_m, start_d)
+                evt_end = datetime(now.year + 1, end_m, end_d)
+            else:
+                evt_start = datetime(now.year, start_m, start_d)
+                evt_end = datetime(now.year, end_m, end_d)
+
+            # Check overlap with ±45 day window
+            if evt_start <= window_end and evt_end >= window_start:
+                matched.append(evt)
+        except (ValueError, IndexError):
+            log.warning(f'日历事件 date_range 格式无效: {evt.get("id","?")} {dr}')
+            continue
+
+    return matched
+
+
+def cleanup_calendar(json_path: str = CALENDAR_PATH):
+    """删除结束日+365天<今天的事件，走write_atomic写回。"""
+    if not os.path.exists(json_path):
+        return
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, ValueError):
+        log.warning('cleanup_calendar: JSON解析失败，跳过清理')
+        return
+
+    events = data.get('events', [])
+    if not events:
+        return
+
+    today = datetime.now()
+    cutoff = today - timedelta(days=365)
+    kept = []
+    removed = 0
+    for evt in events:
+        try:
+            dr = evt.get('date_range', '')
+            end_str = dr.split('~')[1]
+            end_dt = datetime(today.year, int(end_str[:2]), int(end_str[3:]))
+            if end_dt > today:
+                end_dt = datetime(today.year - 1, int(end_str[:2]), int(end_str[3:]))
+            if end_dt >= cutoff:
+                kept.append(evt)
+            else:
+                removed += 1
+        except (ValueError, IndexError):
+            kept.append(evt)  # keep malformed entries
+
+    if removed == 0:
+        return
+
+    data['events'] = kept
+    data['last_updated'] = today.strftime('%Y-%m-%d')
+    try:
+        write_atomic(data, target=json_path)
+        log.info(f'cleanup_calendar: 删除 {removed} 条过期事件')
+    except Exception as e:
+        log.error(f'cleanup_calendar: 写入失败: {e}')
+
+
+def build_calendar_section(events: list) -> str:
+    """生成日历段落文本，注入prompt。零事件返回占位文本。"""
+    if not events:
+        return "📅 当前季节无日历热点事件。"
+
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    lines = [f"📅 当前季节热点日历（{today_str}，±{CALENDAR_WINDOW_DAYS}天窗口，共 {len(events)} 条事件）："]
+    for evt in events:
+        name = evt.get('name', '?')
+        cat = evt.get('category', '')
+        dr = evt.get('date_range', '')
+        angle = evt.get('variety_angle', '')
+        engines = evt.get('engines', [])
+        keywords = evt.get('keywords', [])
+        kw_str = ','.join(keywords) if keywords else ''
+        eng_str = ','.join(engines) if engines else ''
+        parts = [dr, name]
+        if cat:
+            parts.append(f'[{cat}]')
+        if kw_str:
+            parts.append(f'🏷{kw_str}')
+        if angle:
+            parts.append(f'→ {angle}')
+        if eng_str:
+            parts.append(f'【{eng_str}】')
+        lines.append('- ' + ' '.join(parts))
+    return '\n'.join(lines)
+
+
+def build_prompt(merged_topics: list, extra_system: str = "", calendar_events: list = None) -> str:
     topics_text = []
     for i, t in enumerate(merged_topics):
         platforms = ', '.join(t['platforms'])
         topics_text.append(f"{i+1}. [{platforms}] {t['title']}")
-    return DEEPSEEK_PROMPT + "\n\n---\n当前热搜数据：\n" + '\n'.join(topics_text)
+
+    calendar_section = build_calendar_section(calendar_events or [])
+
+    return (DEEPSEEK_PROMPT + "\n\n---\n"
+            + calendar_section + "\n\n---\n当前热搜数据：\n"
+            + '\n'.join(topics_text))
 
 
 def call_deepseek(user_prompt: str, temperature: float = 0.7, extra_system: str = "") -> str:
@@ -269,7 +394,7 @@ def call_deepseek(user_prompt: str, temperature: float = 0.7, extra_system: str 
         "model": DEEPSEEK_MODEL,
         "messages": messages,
         "temperature": temperature,
-        "max_tokens": 8192,
+        "max_tokens": 65536,
     }
 
     resp = requests.post(
@@ -313,6 +438,15 @@ def clean_llm_output(text: str) -> str:
     # R7: single-quote keys → double-quote
     text = re.sub(r"'(\w+)'(\s*:)", r'"\1"\2', text)
 
+    # R8: JSON truncation repair — find last valid key-value and close
+    if not text.endswith('}'):
+        # Find last complete "key": value, or "key": "value" pair
+        last_comma = text.rfind(',')
+        if last_comma > 0:
+            # Drop incomplete last element, close JSON
+            text = text[:last_comma] + '\n    }\n  ]\n}'
+            log.warning('R8: JSON 截断修复 — 丢弃最后一个不完整元素')
+
     return text
 
 
@@ -320,7 +454,59 @@ def clean_llm_output(text: str) -> str:
 VALID_CHANNELS = {'热议', '高赞', '剧集', '日韩', '热门'}
 VALID_GENRES = {'talent_show', 'dating', 'observation', 'survival', 'communal', 'travel'}
 VALID_ENGINES = {f'E{i}' for i in range(1, 10)}
-REQUIRED_SIGNAL_FIELDS = ['id', 'channel', 'topic', 'source', 'angle', 'genres', 'dominant', 'auxiliary', 'score']
+REQUIRED_SIGNAL_FIELDS = ['id', 'channel', 'topic', 'source', 'angle', 'genres', 'dominant', 'score']
+
+# ── L2.5: Signal normalization (fix common LLM output mistakes) ──
+
+CHANNEL_FALLBACK_MAP = {
+    '观察': '高赞',   # LLM confused genre name with channel
+    '旅行': '热门',
+    '游戏': '热议',
+}
+
+
+def normalize_signal(s: dict, idx: int) -> dict:
+    """Fix common LLM output quirks before schema validation."""
+    # P1: auxiliary may be omitted when empty (prompt says "0-2 个")
+    if 'auxiliary' not in s or s['auxiliary'] is None:
+        s['auxiliary'] = []
+
+    # P2: dominant/auxiliary as bare string instead of array
+    if isinstance(s.get('dominant'), str):
+        if s['dominant'].strip():
+            log.warning(f'signals[{idx}].dominant 是字符串，自动转为数组: {s["dominant"]}')
+            s['dominant'] = [s['dominant']]
+        else:
+            s['dominant'] = []
+    if s.get('dominant') is None or (isinstance(s.get('dominant'), list) and len(s['dominant']) == 0):
+        s['dominant'] = ['E1']  # E1=素人造星(通用引擎), always in VALID_ENGINES
+
+    if isinstance(s.get('auxiliary'), str):
+        if s['auxiliary'].strip():
+            log.warning(f'signals[{idx}].auxiliary 是字符串，自动转为数组: {s["auxiliary"]}')
+            s['auxiliary'] = [s['auxiliary']]
+        else:
+            s['auxiliary'] = []
+
+    # P0: channel normalization — map unknown or missing channels
+    ch = s.get('channel', '')
+    if not ch or ch not in VALID_CHANNELS:
+        new_ch = CHANNEL_FALLBACK_MAP.get(ch, '热议')
+        log.warning(f'signals[{idx}].channel 自动修正: "{ch}" → "{new_ch}"')
+        s['channel'] = new_ch
+
+    # platforms default
+    if 'platforms' not in s or s['platforms'] is None:
+        s['platforms'] = []
+
+    return s
+
+
+def normalize_signals(data: dict) -> dict:
+    """Apply normalize_signal to every signal in parsed JSON."""
+    if 'signals' in data and isinstance(data['signals'], list):
+        data['signals'] = [normalize_signal(s, i) for i, s in enumerate(data['signals'])]
+    return data
 
 
 def validate_signal_schema(data: dict) -> list:
@@ -382,6 +568,11 @@ def generate_signal_feed(raw_topics: list, sources_ok: list) -> bool:
     merged = merge_dedup(raw_topics)
     log.info(f'去重后 {len(merged)} 条, 原始 {len(raw_topics)} 条')
 
+    calendar_events = load_calendar()
+    cleanup_calendar()
+    if calendar_events:
+        log.info(f'日历注入: {len(calendar_events)} 条事件在 ±{CALENDAR_WINDOW_DAYS} 天窗口内')
+
     base_temp = 0.7
 
     for attempt in range(MAX_RETRIES + 1):
@@ -389,11 +580,12 @@ def generate_signal_feed(raw_topics: list, sources_ok: list) -> bool:
             temp = base_temp + (0.2 if attempt == 1 else 0)
             extra_system = FIX_PROMPT if attempt == 2 else ""
 
-            raw_output = call_deepseek(build_prompt(merged, extra_system), temp)
+            raw_output = call_deepseek(build_prompt(merged, extra_system, calendar_events), temp)
             log.info(f'DeepSeek 返回 {len(raw_output)} chars')
 
             cleaned = clean_llm_output(raw_output)            # L1
             data = json.loads(cleaned)                        # L2
+            data = normalize_signals(data)                    # L2.5 (fix LLM quirks)
             errors = validate_signal_schema(data)             # L3
             if errors:
                 raise ValueError(f"Schema 校验失败: {', '.join(errors[:5])}")
@@ -421,8 +613,8 @@ def generate_signal_feed(raw_topics: list, sources_ok: list) -> bool:
             if datetime.now() - ts < timedelta(days=STALENESS_DAYS):
                 log.warning(f'全部重试失败，复用 {STALENESS_DAYS} 天内的 signal_feed.json')
                 return False
-        except Exception:
-            pass
+        except Exception as e:
+            log.error(f'复用旧 JSON 失败: {e}')
 
     log.error(f'signal_feed.json 不存在或超过 {STALENESS_DAYS} 天，回退硬编码')
     return False
@@ -498,11 +690,12 @@ def main():
         log.error('DEEPSEEK_KEY 未配置。请在 .env 文件中设置 DEEPSEEK_KEY=sk-...')
         sys.exit(1)
 
-    # Fetch all 4 sources
+    # Fetch all 6 sources
     log.info('抓取数据源...')
     results = {}
     for name, fn in [('weibo', fetch_weibo_hot), ('zhihu', fetch_zhihu_hot),
-                      ('bilibili', fetch_bilibili_hot), ('tophub', fetch_tophub)]:
+                      ('bilibili', fetch_bilibili_hot), ('douyin', fetch_douyin_hot),
+                      ('baidu', fetch_baidu_hot), ('douban-group', fetch_douban_group_hot)]:
         items = fn()
         results[name] = items
         log.info(f'  [{name}] {len(items)} 条')
@@ -526,7 +719,7 @@ def main():
         log.warning('所有源抓取失败')
 
     # Degradation check
-    if len(sources_ok) >= 3:
+    if len(sources_ok) >= 4:
         log.info('L1: 全量 AI 分析')
         ok = generate_signal_feed(all_topics, sources_ok)
     elif len(sources_ok) >= 1:
